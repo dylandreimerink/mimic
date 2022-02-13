@@ -1,20 +1,53 @@
 package mimic
 
 import (
-	"errors"
 	"fmt"
-	"syscall"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
 )
 
+// LinuxEmulatorSettings are settings used by LinuxEmulator, which can be updated by
+type LinuxEmulatorSettings struct {
+	// The maximum amount of tailcalls a process can make, a security feature in the Linux kernel to avoid
+	// infinite tailcall loops.
+	MaxTailCalls int
+}
+
+// LinuxEmulatorOpts are options which can be passed to NewLinuxEmulator to modify the default settings.
+type LinuxEmulatorOpts func(*LinuxEmulatorSettings)
+
+// OptMaxTailCalls is a option to change the max amount of tailcalls a process is allowed to make
+func OptMaxTailCalls(max int) LinuxEmulatorOpts {
+	return func(settings *LinuxEmulatorSettings) {
+		settings.MaxTailCalls = max
+	}
+}
+
 var _ Emulator = (*LinuxEmulator)(nil)
 
 // LinuxEmulator implements Emulator, and attempts to emulate all Linux specific eBPF features.
 type LinuxEmulator struct {
-	vm   *VM
 	Maps map[string]LinuxMap
+
+	settings LinuxEmulatorSettings
+	vm       *VM
+}
+
+// NewLinuxEmulator create a new LinuxEmulator from the given options.
+func NewLinuxEmulator(opts ...LinuxEmulatorOpts) *LinuxEmulator {
+	emu := &LinuxEmulator{
+		Maps: make(map[string]LinuxMap),
+		settings: LinuxEmulatorSettings{
+			MaxTailCalls: 33, // The default max in Linux
+		},
+	}
+
+	for _, opt := range opts {
+		opt(&emu.settings)
+	}
+
+	return emu
 }
 
 // AddMap adds a map to the emulator.
@@ -110,209 +143,19 @@ func (le *LinuxEmulator) RewriteProgram(program *ebpf.ProgramSpec) error {
 	return nil
 }
 
-// HelperFunction is a function defined in Go which can be invoked by the eBPF VM via the Call instruction.
-// The emulator has a lookup map which maps a particular number to a helper function. Helper functions are used as a
-// interface between the sandboxed eBPF VM and the Emulator/Host/Outside world. Helper functions are responsible for
-// security checks and should implement policies or other forms of limitations to guarantee that eBPF code can't be used
-// for malicious purposes.
-//
-// Helper functions are called with eBPF calling convention, meaning R1-R5 are arguments, and R0 is the return value.
-// Errors returned by the helper are considered fatal for the process, are passed to the process and will result in it
-// aborting. Recoverable errors/graceful errors should be returned to the VM via the R0 register and a helper func
-// specific contract.
-type HelperFunction func(p *Process) error
+// LinuxEmuProcValKey is a enum values which is used as the key to the Process.EmulatorValues maps when a LinuxEmulator
+// is used.
+type LinuxEmuProcValKey int
 
-var linuxHelpers = []HelperFunction{
-	0:                   nil, // 0 is not a valid helper function
-	asm.FnMapLookupElem: linuxHelperMapLookupElem,
-	asm.FnMapUpdateElem: linuxHelperMapUpdateElem,
-	asm.FnMapDeleteElem: linuxHelperMapDeleteElem,
+const (
+	// LinuxEmuProcValKeyTailcalls tracks the amount of tailcalls which a process has made.
+	LinuxEmuProcValKeyTailcalls LinuxEmuProcValKey = iota
+)
+
+var linuxEmuProcValKeyToStr = map[LinuxEmuProcValKey]string{
+	LinuxEmuProcValKeyTailcalls: "#-tailcalls",
 }
 
-func r1ToMap(p *Process) (LinuxMap, error) {
-	// Deref the map pointer to get the actual map object
-	entry, off, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R1))
-	if !found {
-		return nil, fmt.Errorf("invalid map pointer in R1, can't find entry in memory controller")
-	}
-
-	lm, ok := entry.Object.(LinuxMap)
-	if !ok {
-		// There are situations, like when using map-in-map types where we will get a double pointer to a BPF map
-		// So lets attempts to dereference once more
-		if vmMem, ok := entry.Object.(VMMem); ok {
-			addr, err := vmMem.Load(off, asm.Word)
-			if err != nil {
-				return nil, fmt.Errorf("Error while attempting to deref dubbel map ptr")
-			}
-
-			entry, _, found = p.VM.MemoryController.GetEntry(uint32(addr))
-			if !found {
-				return nil, fmt.Errorf("invalid doubel map pointer in R1, can't find entry in memory controller")
-			}
-
-			lm, ok = entry.Object.(LinuxMap)
-			if !ok {
-				return nil, fmt.Errorf("R1 doesn't contain pointer or dubbel pointer to a LinuxMap")
-			}
-		} else {
-			return nil, fmt.Errorf("R1 doesn't contain pointer to a LinuxMap")
-		}
-	}
-
-	return lm, nil
-}
-
-func linuxHelperMapLookupElem(p *Process) error {
-	// R1 = ptr to the map, R2 = ptr to key
-
-	// Deref the map pointer to get the actual map object
-	lm, err := r1ToMap(p)
-	if err != nil {
-		return err
-	}
-
-	// Deref the key to get the actual key value
-	key := uint32(p.Registers.R2)
-	keyMem, off, found := p.VM.MemoryController.GetEntry(key)
-	if !found {
-		return fmt.Errorf("key unknown to memory controller: 0x%x", key)
-	}
-
-	vmMem, ok := keyMem.Object.(VMMem)
-	if !ok {
-		return fmt.Errorf("key points to non-vm memory: 0x%x", key)
-	}
-
-	// Read x bytes at the given key pointer, x being the key size indicated by the map spec
-	keyVal := make([]byte, lm.GetSpec().KeySize)
-	err = vmMem.Read(off, keyVal)
-	if err != nil {
-		return fmt.Errorf("deref key ptr: %w", err)
-	}
-
-	valPtr, err := lm.Lookup(keyVal)
-	if err != nil {
-		var sysErr syscall.Errno
-		if !errors.As(err, &sysErr) {
-			return fmt.Errorf("LinuxMap lookup: %w", err)
-		}
-		p.Registers.R0 = uint64(sysErr)
-		return nil
-	}
-
-	p.Registers.R0 = uint64(valPtr)
-
-	return nil
-}
-
-func linuxHelperMapUpdateElem(p *Process) error {
-	// R1 = ptr to the map, R2 = ptr to key, R3 = ptr to value, R4 = flags
-	// Deref the map pointer to get the actual map object
-	lm, err := r1ToMap(p)
-	if err != nil {
-		return err
-	}
-
-	lmu, ok := lm.(LinuxMapUpdater)
-	if !ok {
-		return fmt.Errorf("given LinuxMap can't be updated")
-	}
-
-	// Deref the key to get the actual key value
-	key := uint32(p.Registers.R2)
-	keyMem, off, found := p.VM.MemoryController.GetEntry(key)
-	if !found {
-		return fmt.Errorf("key unknown to memory controller: 0x%x", key)
-	}
-
-	vmMem, ok := keyMem.Object.(VMMem)
-	if !ok {
-		return fmt.Errorf("key points to non-vm memory: 0x%x", key)
-	}
-
-	// Read x bytes at the given key pointer, x being the key size indicated by the map spec
-	keyVal := make([]byte, lm.GetSpec().KeySize)
-	err = vmMem.Read(off, keyVal)
-	if err != nil {
-		return fmt.Errorf("deref key ptr: %w", err)
-	}
-
-	// Deref the value to get the actual value value
-	value := uint32(p.Registers.R3)
-	valMem, off, found := p.VM.MemoryController.GetEntry(value)
-	if !found {
-		return fmt.Errorf("value unknown to memory controller: 0x%x", key)
-	}
-
-	vmMem, ok = valMem.Object.(VMMem)
-	if !ok {
-		return fmt.Errorf("value points to non-vm memory: 0x%x", key)
-	}
-
-	// Read x bytes at the given value pointer, x being the value size indicated by the map spec
-	valVal := make([]byte, lm.GetSpec().ValueSize)
-	err = vmMem.Read(off, valVal)
-	if err != nil {
-		return fmt.Errorf("deref value ptr: %w", err)
-	}
-
-	err = lmu.Update(keyVal, valVal, uint32(p.Registers.R4))
-	if err != nil {
-		var sysErr syscall.Errno
-		if !errors.As(err, &sysErr) {
-			return fmt.Errorf("LinuxMap update: %w", err)
-		}
-		p.Registers.R0 = uint64(sysErr)
-		return nil
-	}
-
-	p.Registers.R0 = 0
-	return nil
-}
-
-func linuxHelperMapDeleteElem(p *Process) error {
-	// R1 = ptr to the map, R2 = ptr to key
-
-	// Deref the map pointer to get the actual map object
-	lm, err := r1ToMap(p)
-	if err != nil {
-		return err
-	}
-	lmd, ok := lm.(LinuxMapDeleter)
-	if !ok {
-		return fmt.Errorf("can't delete from given LinuxMap")
-	}
-
-	// Deref the key to get the actual key value
-	key := uint32(p.Registers.R2)
-	keyMem, off, found := p.VM.MemoryController.GetEntry(key)
-	if !found {
-		return fmt.Errorf("key unknown to memory controller: 0x%x", key)
-	}
-
-	vmMem, ok := keyMem.Object.(VMMem)
-	if !ok {
-		return fmt.Errorf("key points to non-vm memory: 0x%x", key)
-	}
-
-	// Read x bytes at the given key pointer, x being the key size indicated by the map spec
-	keyVal := make([]byte, lm.GetSpec().KeySize)
-	err = vmMem.Read(off, keyVal)
-	if err != nil {
-		return fmt.Errorf("deref key ptr: %w", err)
-	}
-
-	err = lmd.Delete(keyVal)
-	if err != nil {
-		var sysErr syscall.Errno
-		if !errors.As(err, &sysErr) {
-			return fmt.Errorf("LinuxMap delete: %w", err)
-		}
-		p.Registers.R0 = uint64(sysErr)
-		return nil
-	}
-
-	p.Registers.R0 = 0
-	return nil
+func (v LinuxEmuProcValKey) String() string {
+	return linuxEmuProcValKeyToStr[v]
 }

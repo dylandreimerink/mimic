@@ -215,7 +215,7 @@ Note: Marked list items were on the list, but have since been implemented.
 **Mechanisms**
 
 - [X] BPF-to-BPF function calls
-- [ ] Tailcalling (Switching of the current program)
+- [X] Tailcalling (Switching of the current program)
 
 **Linux helper functions**
 
@@ -230,7 +230,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_skb_store_bytes
 - [ ] bpf_l3_csum_replace
 - [ ] bpf_l4_csum_replace
-- [ ] bpf_tail_call
+- [X] bpf_tail_call
 - [ ] bpf_clone_redirect
 - [ ] bpf_get_current_pid_tgid
 - [ ] bpf_get_current_uid_gid
@@ -409,7 +409,7 @@ Note: Marked list items were on the list, but have since been implemented.
 
 - [x] BPF_MAP_TYPE_HASH
 - [x] BPF_MAP_TYPE_ARRAY
-- [/] BPF_MAP_TYPE_PROG_ARRAY
+- [x] BPF_MAP_TYPE_PROG_ARRAY
 - [ ] BPF_MAP_TYPE_PERF_EVENT_ARRAY
 - [ ] BPF_MAP_TYPE_PERCPU_HASH
 - [ ] BPF_MAP_TYPE_PERCPU_ARRAY
@@ -418,8 +418,8 @@ Note: Marked list items were on the list, but have since been implemented.
 - [x] BPF_MAP_TYPE_LRU_HASH
 - [ ] BPF_MAP_TYPE_LRU_PERCPU_HASH
 - [ ] BPF_MAP_TYPE_LPM_TRIE
-- [/] BPF_MAP_TYPE_ARRAY_OF_MAPS
-- [/] BPF_MAP_TYPE_HASH_OF_MAPS
+- [ ] BPF_MAP_TYPE_ARRAY_OF_MAPS
+- [ ] BPF_MAP_TYPE_HASH_OF_MAPS
 - [ ] BPF_MAP_TYPE_DEVMAP
 - [ ] BPF_MAP_TYPE_SOCKMAP
 - [ ] BPF_MAP_TYPE_CPUMAP
@@ -442,3 +442,4 @@ Note: Marked list items were on the list, but have since been implemented.
 
 - [ ] (optional) real map backing. The idea being that instead of emulating a map, we can use actual BPF maps of the host. It may not be able to simulate all features, disabling syscall writes on a map would also block access for the eBPF program in this case. But baring some limitations, this could allow someone to share a map between the emulator and a loader program, or a real and emulated program. 
 - [ ] emulator helper customization. Allowing users to change or extend the existing Linux emulator. For example to replace the `bpf_probe_read` callback so the Host program can return its own custom memory objects, thus being able integrate the VM/Emulator with the rest of the host application.
+- [ ] high-security settings on the vm. There are moments when we reuse memory(deleting map keys, tailcalls, bpf-to-bpf calls), but don't zero it out before reuse. There might be use cases, especially when running foreign code in a multi tenant environment where this might lead to security issues. Zeroing out memory can be costly, especially if the security use-case doesn't apply, so being able to enable or disable this feature with a VM setting would be nice. (Note: we currently don't zero-memory at all). (Note2: zeroing out memory should also enforce correctness for programs)

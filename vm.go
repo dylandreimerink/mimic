@@ -59,16 +59,15 @@ func NewVM(opts ...VMOpt) *VM {
 	return vm
 }
 
-// GetPrograms returns a copy the loaded program specs
+// GetPrograms returns the loaded program specs
 func (vm *VM) GetPrograms() []*ebpf.ProgramSpec {
 	vm.programsMu.RLock()
 	defer vm.programsMu.RUnlock()
 
-	// We don't want to return our slice since it would become modifyable outside of the control of the mutex
-	// So return a copy
+	// Make a new slice with the same pointers, so the slice content can't be changed but the programs can
 	ls := make([]*ebpf.ProgramSpec, len(vm.programs))
 	for i, prog := range vm.programs {
-		ls[i] = prog.Copy()
+		ls[i] = prog
 	}
 
 	return ls
@@ -127,6 +126,12 @@ func (vm *VM) AddProgram(prog *ebpf.ProgramSpec) (int, error) {
 		}
 	}
 
+	// Add the program to the memory controller
+	_, err = vm.MemoryController.AddEntry(prog, 8, prog.Name)
+	if err != nil {
+		return -1, fmt.Errorf("Error while adding program to memory controller: %w", err)
+	}
+
 	vm.programs = append(vm.programs, prog)
 
 	return len(vm.programs) - 1, nil
@@ -147,8 +152,9 @@ func (vm *VM) NewProcess(entrypoint int, ctx Context) (*Process, error) {
 		Stack: PlainMemory{
 			Backing: make([]byte, vm.settings.StackFrameCount*vm.settings.StackFrameSize),
 		},
-		Program: vm.programs[entrypoint],
-		Context: ctx,
+		Program:        vm.programs[entrypoint],
+		Context:        ctx,
+		EmulatorValues: make(map[interface{}]interface{}),
 		// Registers will start with zero values
 	}
 
@@ -183,6 +189,9 @@ type Process struct {
 	Context Context
 	// The registers of this process
 	Registers Registers
+	// A values which the the emulator can use to track process specific values
+	EmulatorValues map[interface{}]interface{}
+
 	// A slice of saved registers, each time we make a BPF-to-BPF function call, we have to save PC and R6-R9.
 	calleeSavedRegister []Registers
 
