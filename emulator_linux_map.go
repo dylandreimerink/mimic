@@ -418,17 +418,17 @@ func (m *LinuxLRUHashMap) Update(key []byte, value []byte, flags uint32) error {
 			return fmt.Errorf("map is full by LRU is empty")
 		}
 
-		key, ok := back.Value.([]byte)
+		keyVal, ok := back.Value.([]byte)
 		if !ok {
 			return fmt.Errorf("type other than byte slice in LRU")
 		}
 
-		err = m.Delete(key)
+		err = m.Delete(keyVal)
 		if err != nil {
 			return fmt.Errorf("evict error: %w", err)
 		}
 
-		err = m.hashMap.Update(key, value, flags)
+		err = m.hashMap.Update(keyVal, value, flags)
 		if err != nil {
 			return fmt.Errorf("second update error: %w", err)
 		}

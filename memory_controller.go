@@ -48,7 +48,7 @@ func (mc *MemoryController) String() string {
 }
 
 // The memory controller will start allocating addresses starting at memStart, so common scalar values like 0, 1
-// can't be interperted as addresses.
+// can't be interpreted as addresses.
 const memStart = 0xFFFF
 
 func (mc *MemoryController) AddEntry(obj interface{}, size uint32, name string) (MemoryEntry, error) {
@@ -311,7 +311,7 @@ func (pm *PlainMemory) Store(offset uint32, value uint64, size asm.Size) error {
 	case asm.Word:
 		pm.ByteOrder.PutUint32(b, uint32(value))
 	case asm.DWord:
-		pm.ByteOrder.PutUint64(b, uint64(value))
+		pm.ByteOrder.PutUint64(b, value)
 	default:
 		return fmt.Errorf("unknown size '%v'", size)
 	}

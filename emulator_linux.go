@@ -78,7 +78,7 @@ func (le *LinuxEmulator) RewriteProgram(program *ebpf.ProgramSpec) error {
 			mapMemEntry, found := le.vm.MemoryController.GetEntryByObject(refMap)
 			if !found {
 				return fmt.Errorf(
-					"map named '%s', isn't registed at the VM's memory controller",
+					"map named '%s', isn't registered at the VM's memory controller",
 					refName,
 				)
 			}

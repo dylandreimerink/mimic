@@ -55,7 +55,7 @@ func NewVM(opts ...VMOpt) *VM {
 	return vm
 }
 
-// GetPrograms returns a copy the loaded program spects
+// GetPrograms returns a copy the loaded program specs
 func (vm *VM) GetPrograms() []*ebpf.ProgramSpec {
 	vm.programsMu.RLock()
 	defer vm.programsMu.RUnlock()
@@ -80,7 +80,7 @@ func (vm *VM) AddProgram(prog *ebpf.ProgramSpec) (int, error) {
 		nopPatched = append(nopPatched, inst)
 		if inst.OpCode.IsDWordLoad() {
 			nopPatched = append(nopPatched, asm.Instruction{
-				OpCode: 0, // OpCode 0 is interperted as a No-Op
+				OpCode: 0, // OpCode 0 is interpreted as a No-Op
 			})
 		}
 	}

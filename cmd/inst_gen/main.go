@@ -16,7 +16,7 @@ type AluOp struct {
 	GoOp  string
 }
 
-var AluOps = []AluOp{
+var aluOps = []AluOp{
 	{BPFOp: asm.Add, GoOp: "+"},
 	{BPFOp: asm.Sub, GoOp: "-"},
 	{BPFOp: asm.Mul, GoOp: "*"},
@@ -35,7 +35,7 @@ type JumpOp struct {
 	Signed bool
 }
 
-var JumpOps = []JumpOp{
+var jumpOps = []JumpOp{
 	{BPFOp: asm.JEq, GoOp: "=="},
 	{BPFOp: asm.JGT, GoOp: ">"},
 	{BPFOp: asm.JGE, GoOp: ">="},
@@ -53,7 +53,7 @@ type KV struct {
 	Value string
 }
 
-var Insts = make([]*KV, 255)
+var insts = make([]*KV, 255)
 
 func main() {
 	var err error
@@ -61,14 +61,14 @@ func main() {
 
 	alu32Class := asm.OpCode(asm.ALUClass)
 	alu64Class := asm.OpCode(asm.ALU64Class)
-	for _, op := range AluOps {
+	for _, op := range aluOps {
 		// The 32bit IMM variant
 		asmOp := alu32Class.SetALUOp(op.BPFOp)
 		err = alu32Imm.Execute(os.Stdout, op)
 		if err != nil {
 			panic(err)
 		}
-		Insts[asmOp] = &KV{
+		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALUClass).SetALUOp(asm.%s)", op.BPFOp),
 			Value: fmt.Sprintf("InstALU32%sIMM", op.BPFOp),
 		}
@@ -79,7 +79,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		Insts[asmOp] = &KV{
+		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALU64Class).SetALUOp(asm.%s)", op.BPFOp),
 			Value: fmt.Sprintf("InstALU64%sIMM", op.BPFOp),
 		}
@@ -90,7 +90,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		Insts[asmOp] = &KV{
+		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALUClass).SetALUOp(asm.%s) | asm.OpCode(asm.RegSource)", op.BPFOp),
 			Value: fmt.Sprintf("InstALU32%sReg", op.BPFOp),
 		}
@@ -101,7 +101,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		Insts[asmOp] = &KV{
+		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALU64Class).SetALUOp(asm.%s) | asm.OpCode(asm.RegSource)", op.BPFOp),
 			Value: fmt.Sprintf("InstALU64%sReg", op.BPFOp),
 		}
@@ -109,7 +109,7 @@ func main() {
 
 	jump32Class := asm.OpCode(asm.Jump32Class)
 	jump64Class := asm.OpCode(asm.JumpClass)
-	for _, op := range JumpOps {
+	for _, op := range jumpOps {
 		// The 32bit IMM variant
 		asmOp := jump32Class.SetJumpOp(op.BPFOp)
 		if op.Signed {
@@ -120,7 +120,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		Insts[asmOp] = &KV{
+		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.Jump32Class).SetJumpOp(asm.%s)", op.BPFOp),
 			Value: fmt.Sprintf("InstJump32%sIMM", op.BPFOp),
 		}
@@ -135,7 +135,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		Insts[asmOp] = &KV{
+		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.JumpClass).SetJumpOp(asm.%s)", op.BPFOp),
 			Value: fmt.Sprintf("InstJump64%sIMM", op.BPFOp),
 		}
@@ -150,7 +150,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		Insts[asmOp] = &KV{
+		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.JumpClass).SetJumpOp(asm.%s) | asm.OpCode(asm.RegSource)", op.BPFOp),
 			Value: fmt.Sprintf("InstJump32%sReg", op.BPFOp),
 		}
@@ -165,13 +165,13 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		Insts[asmOp] = &KV{
+		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALU64Class).SetJumpOp(asm.%s) | asm.OpCode(asm.RegSource)", op.BPFOp),
 			Value: fmt.Sprintf("InstJump64%sReg", op.BPFOp),
 		}
 	}
 
-	err = initGen.Execute(os.Stdout, Insts)
+	err = initGen.Execute(os.Stdout, insts)
 	if err != nil {
 		panic(err)
 	}

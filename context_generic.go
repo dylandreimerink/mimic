@@ -36,16 +36,16 @@ type GenericContext struct {
 	loaded bool
 }
 
-func (m *GenericContext) MarshalJSON() ([]byte, error) {
+func (c *GenericContext) MarshalJSON() ([]byte, error) {
 	type Alias GenericContext
-	a := Alias(*m)
+	a := Alias(*c)
 	b, err := json.Marshal(a)
 	if err != nil {
 		return nil, err
 	}
 
 	proto := protoCtx{
-		Name: m.Name,
+		Name: c.Name,
 		Type: "generic",
 		Ctx:  b,
 	}
@@ -270,7 +270,7 @@ type GenericContextMemoryBlock struct {
 }
 
 // pseudoGenericContextMemoryBlock is a copy of GenericContextMemoryBlock but with string fields which is used while
-// marshalling/unmarshalling json.
+// marshaling/unmarshalling json.
 type pseudoGenericContextMemoryBlock struct {
 	Value     string `json:"value"`
 	ByteOrder string `json:"byteorder"`
@@ -397,12 +397,12 @@ type GenericContextStruct struct {
 	addr uint32
 }
 
-func (m *GenericContextStruct) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.Fields)
+func (s *GenericContextStruct) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.Fields)
 }
 
-func (m *GenericContextStruct) UnmarshalJSON(b []byte) error {
-	return json.Unmarshal(b, &m.Fields)
+func (s *GenericContextStruct) UnmarshalJSON(b []byte) error {
+	return json.Unmarshal(b, &s.Fields)
 }
 
 func (s *GenericContextStruct) GetAddr(p *Process, g *GenericContext, m *GenericContextMemory) (uint32, error) {
@@ -434,7 +434,7 @@ func (s *GenericContextStruct) GetAddr(p *Process, g *GenericContext, m *Generic
 			// we can just add all bytes to the blob of this struct.
 
 			// Note: not planning on allowing blocks directly. That is because of the edge-case: what if we include a
-			// block in a struct and make a pointer to it? You would have to a: allocate both seperately(might be
+			// block in a struct and make a pointer to it? You would have to a: allocate both separately(might be
 			// confusing if that was not the users intent), b: have the pointer point to the block inside of the
 			// struct(now we have ordering issues, how does the pointer know the block is also referenced by a struct?
 			// ). A way to sidestep the issue is to declare 2 types, "block" for pointers and "array" for embeding.
