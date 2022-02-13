@@ -11,11 +11,16 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+// LinuxMap is an interface which describes the common functions each map for the LinuxEmulator has. LinuxMaps are
+// initialized by the LinuxEmulator upon being added to the emulator and are expected to be ready to store data after
+// that. Every map type is expected to be able to return a list of valid keys and for these keys to be retrieved via
+// Lookup, this is so the Host can always inspect the map contents. Other "actions" like modifying the maps are optional
+// and have their own interfaces.
 type LinuxMap interface {
 	Init(emulator *LinuxEmulator) error
 	GetSpec() ebpf.MapSpec
 
-	// Keys returns a byte slice containing all key values in their byte representation. The side is always a multiple
+	// Keys returns a byte slice containing all key values in their byte representation. The size is always a multiple
 	// of the about of entries in the map and the key size.
 	Keys() []byte
 
@@ -24,6 +29,7 @@ type LinuxMap interface {
 	Lookup(key []byte) (uint32, error)
 }
 
+// LinuxMapUpdater describes a LinuxMap which can update any value as long as the key is known.
 type LinuxMapUpdater interface {
 	// Updates takes a key, value and flags, key and value slices must match the length of the key and value as defined
 	// in the map spec. If successful nil is returned, graceful errors are of type syscall.Errno and can be forwarded
@@ -31,11 +37,13 @@ type LinuxMapUpdater interface {
 	Update(key []byte, value []byte, flags uint32) error
 }
 
+// LinuxMapDeleter describes a LinuxMap which can delete any value as long as the key is known.
 type LinuxMapDeleter interface {
 	// Delete takes a key, and removes it from the map
 	Delete(key []byte) error
 }
 
+// MapSpecToLinuxMap translates a map specification to a LinuxMap type which can be used in the LinuxEmulator.
 func MapSpecToLinuxMap(spec *ebpf.MapSpec) (LinuxMap, error) {
 	switch spec.Type {
 	case ebpf.Array, ebpf.PerCPUArray, ebpf.ArrayOfMaps:
@@ -65,6 +73,8 @@ func MapSpecToLinuxMap(spec *ebpf.MapSpec) (LinuxMap, error) {
 	return nil, fmt.Errorf("unsupported map type '%s'", spec.Type)
 }
 
+// LinuxArrayMap is the emulated version of ebpf.Array / BPF_MAP_TYPE_ARRAY.
+// Array maps have 4 byte integer keys from 0 to Spec.MaxEntries with arbitrary values
 type LinuxArrayMap struct {
 	Spec     *ebpf.MapSpec
 	emulator *LinuxEmulator
@@ -73,6 +83,7 @@ type LinuxArrayMap struct {
 	addr    uint32
 }
 
+// Init initializes the map, part of the LinuxMap implementation
 func (m *LinuxArrayMap) Init(emulator *LinuxEmulator) error {
 	size := m.Spec.MaxEntries * m.Spec.ValueSize
 
@@ -98,10 +109,13 @@ func (m *LinuxArrayMap) Init(emulator *LinuxEmulator) error {
 	return nil
 }
 
+// GetSpec returns the specification of the map, part of the LinuxMap implementation
 func (m *LinuxArrayMap) GetSpec() ebpf.MapSpec {
 	return *m.Spec
 }
 
+// Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
+// the proper window into the slice based on the size of m.Spec.KeySize.
 func (m *LinuxArrayMap) Keys() []byte {
 	b := make([]byte, 4*m.Spec.MaxEntries)
 	bo := GetNativeEndianness()
@@ -111,6 +125,7 @@ func (m *LinuxArrayMap) Keys() []byte {
 	return b
 }
 
+// Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
 func (m *LinuxArrayMap) Lookup(key []byte) (uint32, error) {
 	if len(key) != 4 {
 		return 0, fmt.Errorf("invalid key length, must be 4 bytes for array maps")
@@ -129,6 +144,7 @@ func (m *LinuxArrayMap) Lookup(key []byte) (uint32, error) {
 	return m.addr + (keyVal * m.Spec.ValueSize), nil
 }
 
+// Update updates an existing value in the map, or add a new value if it didn't exist before.
 func (m *LinuxArrayMap) Update(key []byte, value []byte, flags uint32) error {
 	if len(key) != 4 {
 		return fmt.Errorf("invalid key length, must be 4 bytes for array maps")
@@ -147,6 +163,8 @@ func (m *LinuxArrayMap) Update(key []byte, value []byte, flags uint32) error {
 	return m.backing.Write(keyVal*m.Spec.ValueSize, value)
 }
 
+// LinuxHashMap is the emulated version of ebpf.Hash / BPF_MAP_TYPE_HASH.
+// Hash maps have arbitrary keys and values.
 type LinuxHashMap struct {
 	Spec     *ebpf.MapSpec
 	emulator *LinuxEmulator
@@ -168,6 +186,7 @@ type LinuxHashMap struct {
 	valuesAddr uint32
 }
 
+// Init initializes the map, part of the LinuxMap implementation
 func (m *LinuxHashMap) Init(emulator *LinuxEmulator) error {
 	if m.keys != nil || m.values != nil {
 		return fmt.Errorf("map is still loaded, please cleanup before re-loading")
@@ -224,10 +243,13 @@ func (m *LinuxHashMap) Init(emulator *LinuxEmulator) error {
 	return nil
 }
 
+// GetSpec returns the specification of the map, part of the LinuxMap implementation
 func (m *LinuxHashMap) GetSpec() ebpf.MapSpec {
 	return *m.Spec
 }
 
+// Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
+// the proper window into the slice based on the size of m.Spec.KeySize.
 func (m *LinuxHashMap) Keys() []byte {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -250,6 +272,7 @@ func (m *LinuxHashMap) Keys() []byte {
 	return keys
 }
 
+// Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
 func (m *LinuxHashMap) Lookup(key []byte) (uint32, error) {
 	if len(key) != int(m.Spec.KeySize) {
 		return 0, fmt.Errorf("size of given key doesn't match key size in map spec")
@@ -273,6 +296,7 @@ func (m *LinuxHashMap) Lookup(key []byte) (uint32, error) {
 	return m.valuesAddr + valueOffset, nil
 }
 
+// Update updates an existing value in the map, or add a new value if it didn't exist before.
 func (m *LinuxHashMap) Update(key []byte, value []byte, flags uint32) error {
 	if len(key) != int(m.Spec.KeySize) {
 		return fmt.Errorf("size of given key doesn't match key size in map spec")
@@ -320,6 +344,7 @@ func (m *LinuxHashMap) Update(key []byte, value []byte, flags uint32) error {
 	return nil
 }
 
+// Delete deletes a values from the map
 func (m *LinuxHashMap) Delete(key []byte) error {
 	if len(key) != int(m.Spec.KeySize) {
 		return fmt.Errorf("size of given key doesn't match key size in map spec")
@@ -352,6 +377,10 @@ func (m *LinuxHashMap) Delete(key []byte) error {
 	return nil
 }
 
+// LinuxLRUHashMap is the emulated version of ebpf.LRUHash / BPF_MAP_TYPE_LRU_HASH.
+// This map type is a normal hash map which also records which map values are the Least Recently Used. If the map is
+// full and a new value is added, this map type will discard the Least Recently Used value from the map to make room
+// for the new value instread of returning a "out of memory" error.
 type LinuxLRUHashMap struct {
 	Spec *ebpf.MapSpec
 	// wrap an normal hashmap
@@ -361,6 +390,7 @@ type LinuxLRUHashMap struct {
 	usageList *list.List
 }
 
+// Init initializes the map, part of the LinuxMap implementation
 func (m *LinuxLRUHashMap) Init(emulator *LinuxEmulator) error {
 	m.hashMap = &LinuxHashMap{
 		Spec: m.Spec,
@@ -375,14 +405,18 @@ func (m *LinuxLRUHashMap) Init(emulator *LinuxEmulator) error {
 	return nil
 }
 
+// GetSpec returns the specification of the map, part of the LinuxMap implementation
 func (m *LinuxLRUHashMap) GetSpec() ebpf.MapSpec {
 	return *m.hashMap.Spec
 }
 
+// Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
+// the proper window into the slice based on the size of m.Spec.KeySize.
 func (m *LinuxLRUHashMap) Keys() []byte {
 	return m.hashMap.Keys()
 }
 
+// Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
 func (m *LinuxLRUHashMap) Lookup(key []byte) (uint32, error) {
 	valPtr, err := m.hashMap.Lookup(key)
 	if valPtr == 0 || err != nil {
@@ -404,6 +438,7 @@ func (m *LinuxLRUHashMap) Lookup(key []byte) (uint32, error) {
 	return valPtr, nil
 }
 
+// Update updates an existing value in the map, or add a new value if it didn't exist before.
 func (m *LinuxLRUHashMap) Update(key []byte, value []byte, flags uint32) error {
 	err := m.hashMap.Update(key, value, flags)
 	if err != nil {
@@ -457,6 +492,7 @@ func (m *LinuxLRUHashMap) Update(key []byte, value []byte, flags uint32) error {
 	return nil
 }
 
+// Delete deletes a key from the map.
 func (m *LinuxLRUHashMap) Delete(key []byte) error {
 	err := m.hashMap.Delete(key)
 	if err != nil {

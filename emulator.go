@@ -2,6 +2,7 @@ package mimic
 
 import "github.com/cilium/ebpf"
 
+// Emulator describes a struct which implements eBPF features which are specific to a certain environment.
 type Emulator interface {
 	// SetVM is called when an emulator is linked to a VM, this allows the emulator to save a reference
 	// so it can access information about the VM like the memory controller.

@@ -11,11 +11,13 @@ import (
 
 var _ Emulator = (*LinuxEmulator)(nil)
 
+// LinuxEmulator implements Emulator, and attempts to emulate all Linux specific eBPF features.
 type LinuxEmulator struct {
 	vm   *VM
 	Maps map[string]LinuxMap
 }
 
+// AddMap adds a map to the emulator.
 func (le *LinuxEmulator) AddMap(m LinuxMap) error {
 	err := m.Init(le)
 	if err != nil {
@@ -37,10 +39,13 @@ func (le *LinuxEmulator) AddMap(m LinuxMap) error {
 	return nil
 }
 
+// SetVM is called by VM when attaching the emulator to the VM, it allows the emulator to store a reference to the
+// VM to which is is attached.
 func (le *LinuxEmulator) SetVM(vm *VM) {
 	le.vm = vm
 }
 
+// CallHelperFunction is called by the VM when it wan't to execute a helper function.
 func (le *LinuxEmulator) CallHelperFunction(helperNr int32, p *Process) error {
 	if len(linuxHelpers) <= int(helperNr) {
 		return fmt.Errorf("unimplemented helper function %d", helperNr)
@@ -54,6 +59,8 @@ func (le *LinuxEmulator) CallHelperFunction(helperNr int32, p *Process) error {
 	return helper(p)
 }
 
+// RewriteProgram is called by the VM when adding a program to it. It allows us to rewrite program instructions.
+// In this case we rewrite map load instructions to have the virtual addresess of the map to which the refer.
 func (le *LinuxEmulator) RewriteProgram(program *ebpf.ProgramSpec) error {
 	if le.Maps == nil {
 		le.Maps = make(map[string]LinuxMap)
@@ -103,6 +110,16 @@ func (le *LinuxEmulator) RewriteProgram(program *ebpf.ProgramSpec) error {
 	return nil
 }
 
+// HelperFunction is a function defined in Go which can be invoked by the eBPF VM via the Call instruction.
+// The emulator has a lookup map which maps a particular number to a helper function. Helper functions are used as a
+// interface between the sandboxed eBPF VM and the Emulator/Host/Outside world. Helper functions are responsible for
+// security checks and should implement policies or other forms of limitations to guarantee that eBPF code can't be used
+// for malicious purposes.
+//
+// Helper functions are called with eBPF calling convention, meaning R1-R5 are arguments, and R0 is the return value.
+// Errors returned by the helper are considered fatal for the process, are passed to the process and will result in it
+// aborting. Recoverable errors/graceful errors should be returned to the VM via the R0 register and a helper func
+// specific contract.
 type HelperFunction func(p *Process) error
 
 var linuxHelpers = []HelperFunction{

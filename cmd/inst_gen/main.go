@@ -70,7 +70,7 @@ func main() {
 		}
 		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALUClass).SetALUOp(asm.%s)", op.BPFOp),
-			Value: fmt.Sprintf("InstALU32%sIMM", op.BPFOp),
+			Value: fmt.Sprintf("instALU32%sIMM", op.BPFOp),
 		}
 
 		// The 64bit IMM variant
@@ -81,7 +81,7 @@ func main() {
 		}
 		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALU64Class).SetALUOp(asm.%s)", op.BPFOp),
-			Value: fmt.Sprintf("InstALU64%sIMM", op.BPFOp),
+			Value: fmt.Sprintf("instALU64%sIMM", op.BPFOp),
 		}
 
 		// The 32bit Regs variants
@@ -92,7 +92,7 @@ func main() {
 		}
 		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALUClass).SetALUOp(asm.%s) | asm.OpCode(asm.RegSource)", op.BPFOp),
-			Value: fmt.Sprintf("InstALU32%sReg", op.BPFOp),
+			Value: fmt.Sprintf("instALU32%sReg", op.BPFOp),
 		}
 
 		// The 64bit Regs variants
@@ -103,7 +103,7 @@ func main() {
 		}
 		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALU64Class).SetALUOp(asm.%s) | asm.OpCode(asm.RegSource)", op.BPFOp),
-			Value: fmt.Sprintf("InstALU64%sReg", op.BPFOp),
+			Value: fmt.Sprintf("instALU64%sReg", op.BPFOp),
 		}
 	}
 
@@ -122,7 +122,7 @@ func main() {
 		}
 		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.Jump32Class).SetJumpOp(asm.%s)", op.BPFOp),
-			Value: fmt.Sprintf("InstJump32%sIMM", op.BPFOp),
+			Value: fmt.Sprintf("instJump32%sIMM", op.BPFOp),
 		}
 
 		// The 64bit IMM variant
@@ -137,7 +137,7 @@ func main() {
 		}
 		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.JumpClass).SetJumpOp(asm.%s)", op.BPFOp),
-			Value: fmt.Sprintf("InstJump64%sIMM", op.BPFOp),
+			Value: fmt.Sprintf("instJump64%sIMM", op.BPFOp),
 		}
 
 		// The 32bit Regs variants
@@ -152,7 +152,7 @@ func main() {
 		}
 		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.JumpClass).SetJumpOp(asm.%s) | asm.OpCode(asm.RegSource)", op.BPFOp),
-			Value: fmt.Sprintf("InstJump32%sReg", op.BPFOp),
+			Value: fmt.Sprintf("instJump32%sReg", op.BPFOp),
 		}
 
 		// The 64bit Regs variants
@@ -167,7 +167,7 @@ func main() {
 		}
 		insts[asmOp] = &KV{
 			Key:   fmt.Sprintf("asm.OpCode(asm.ALU64Class).SetJumpOp(asm.%s) | asm.OpCode(asm.RegSource)", op.BPFOp),
-			Value: fmt.Sprintf("InstJump64%sReg", op.BPFOp),
+			Value: fmt.Sprintf("instJump64%sReg", op.BPFOp),
 		}
 	}
 
@@ -187,14 +187,14 @@ import "github.com/cilium/ebpf/asm"
 `
 
 var alu32Imm = template.Must(template.New("tpl").Parse(`
-func InstALU32{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
+func instALU32{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst) {{.GoOp}} uint32(i.Constant)))
 }
 `))
 
 var alu32Reg = template.Must(template.New("tpl").Parse(`
-func InstALU32{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
+func instALU32{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst) {{.GoOp}} uint32(src)))
@@ -202,14 +202,14 @@ func InstALU32{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
 `))
 
 var alu64Imm = template.Must(template.New("tpl").Parse(`
-func InstALU64{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
+func instALU64{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst {{.GoOp}} uint64(i.Constant))
 }
 `))
 
 var alu64Reg = template.Must(template.New("tpl").Parse(`
-func InstALU64{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
+func instALU64{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst {{.GoOp}}src)
@@ -217,7 +217,7 @@ func InstALU64{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
 `))
 
 var jump32Imm = template.Must(template.New("tpl").Parse(`
-func InstJump32{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
+func instJump32{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) {{.GoOp}} uint32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -228,7 +228,7 @@ func InstJump32{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error 
 `))
 
 var jump64Imm = template.Must(template.New("tpl").Parse(`
-func InstJump64{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
+func instJump64{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if dst {{.GoOp}} uint64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -239,7 +239,7 @@ func InstJump64{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error 
 `))
 
 var jump32Reg = template.Must(template.New("tpl").Parse(`
-func InstJump32{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
+func instJump32{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) {{.GoOp}} uint32(src) {
@@ -251,7 +251,7 @@ func InstJump32{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error 
 `))
 
 var jump64Reg = template.Must(template.New("tpl").Parse(`
-func InstJump64{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
+func instJump64{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if dst {{.GoOp}} src {
@@ -263,7 +263,7 @@ func InstJump64{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error 
 `))
 
 var jump32ImmSigned = template.Must(template.New("tpl").Parse(`
-func InstJump32{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
+func instJump32{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) {{.GoOp}} int32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -274,7 +274,7 @@ func InstJump32{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error 
 `))
 
 var jump64ImmSigned = template.Must(template.New("tpl").Parse(`
-func InstJump64{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
+func instJump64{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) {{.GoOp}} int64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -285,7 +285,7 @@ func InstJump64{{.BPFOp.String}}IMM (i asm.Instruction, process *Process) error 
 `))
 
 var jump32RegSigned = template.Must(template.New("tpl").Parse(`
-func InstJump32{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
+func instJump32{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) {{.GoOp}} int32(src) {
@@ -297,7 +297,7 @@ func InstJump32{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error 
 `))
 
 var jump64RegSigned = template.Must(template.New("tpl").Parse(`
-func InstJump64{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
+func instJump64{{.BPFOp.String}}Reg (i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) {{.GoOp}} int64(src) {

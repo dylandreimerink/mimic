@@ -4,227 +4,227 @@ package mimic
 
 import "github.com/cilium/ebpf/asm"
 
-func InstALU32AddIMM(i asm.Instruction, process *Process) error {
+func instALU32AddIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)+uint32(i.Constant)))
 }
 
-func InstALU64AddIMM(i asm.Instruction, process *Process) error {
+func instALU64AddIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst+uint64(i.Constant))
 }
 
-func InstALU32AddReg(i asm.Instruction, process *Process) error {
+func instALU32AddReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)+uint32(src)))
 }
 
-func InstALU64AddReg(i asm.Instruction, process *Process) error {
+func instALU64AddReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst+src)
 }
 
-func InstALU32SubIMM(i asm.Instruction, process *Process) error {
+func instALU32SubIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)-uint32(i.Constant)))
 }
 
-func InstALU64SubIMM(i asm.Instruction, process *Process) error {
+func instALU64SubIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst-uint64(i.Constant))
 }
 
-func InstALU32SubReg(i asm.Instruction, process *Process) error {
+func instALU32SubReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)-uint32(src)))
 }
 
-func InstALU64SubReg(i asm.Instruction, process *Process) error {
+func instALU64SubReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst-src)
 }
 
-func InstALU32MulIMM(i asm.Instruction, process *Process) error {
+func instALU32MulIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)*uint32(i.Constant)))
 }
 
-func InstALU64MulIMM(i asm.Instruction, process *Process) error {
+func instALU64MulIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst*uint64(i.Constant))
 }
 
-func InstALU32MulReg(i asm.Instruction, process *Process) error {
+func instALU32MulReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)*uint32(src)))
 }
 
-func InstALU64MulReg(i asm.Instruction, process *Process) error {
+func instALU64MulReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst*src)
 }
 
-func InstALU32DivIMM(i asm.Instruction, process *Process) error {
+func instALU32DivIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)/uint32(i.Constant)))
 }
 
-func InstALU64DivIMM(i asm.Instruction, process *Process) error {
+func instALU64DivIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst/uint64(i.Constant))
 }
 
-func InstALU32DivReg(i asm.Instruction, process *Process) error {
+func instALU32DivReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)/uint32(src)))
 }
 
-func InstALU64DivReg(i asm.Instruction, process *Process) error {
+func instALU64DivReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst/src)
 }
 
-func InstALU32OrIMM(i asm.Instruction, process *Process) error {
+func instALU32OrIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)|uint32(i.Constant)))
 }
 
-func InstALU64OrIMM(i asm.Instruction, process *Process) error {
+func instALU64OrIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst|uint64(i.Constant))
 }
 
-func InstALU32OrReg(i asm.Instruction, process *Process) error {
+func instALU32OrReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)|uint32(src)))
 }
 
-func InstALU64OrReg(i asm.Instruction, process *Process) error {
+func instALU64OrReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst|src)
 }
 
-func InstALU32AndIMM(i asm.Instruction, process *Process) error {
+func instALU32AndIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)&uint32(i.Constant)))
 }
 
-func InstALU64AndIMM(i asm.Instruction, process *Process) error {
+func instALU64AndIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst&uint64(i.Constant))
 }
 
-func InstALU32AndReg(i asm.Instruction, process *Process) error {
+func instALU32AndReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)&uint32(src)))
 }
 
-func InstALU64AndReg(i asm.Instruction, process *Process) error {
+func instALU64AndReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst&src)
 }
 
-func InstALU32LShIMM(i asm.Instruction, process *Process) error {
+func instALU32LShIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)<<uint32(i.Constant)))
 }
 
-func InstALU64LShIMM(i asm.Instruction, process *Process) error {
+func instALU64LShIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst<<uint64(i.Constant))
 }
 
-func InstALU32LShReg(i asm.Instruction, process *Process) error {
+func instALU32LShReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)<<uint32(src)))
 }
 
-func InstALU64LShReg(i asm.Instruction, process *Process) error {
+func instALU64LShReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst<<src)
 }
 
-func InstALU32RShIMM(i asm.Instruction, process *Process) error {
+func instALU32RShIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)>>uint32(i.Constant)))
 }
 
-func InstALU64RShIMM(i asm.Instruction, process *Process) error {
+func instALU64RShIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst>>uint64(i.Constant))
 }
 
-func InstALU32RShReg(i asm.Instruction, process *Process) error {
+func instALU32RShReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)>>uint32(src)))
 }
 
-func InstALU64RShReg(i asm.Instruction, process *Process) error {
+func instALU64RShReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst>>src)
 }
 
-func InstALU32ModIMM(i asm.Instruction, process *Process) error {
+func instALU32ModIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)%uint32(i.Constant)))
 }
 
-func InstALU64ModIMM(i asm.Instruction, process *Process) error {
+func instALU64ModIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst%uint64(i.Constant))
 }
 
-func InstALU32ModReg(i asm.Instruction, process *Process) error {
+func instALU32ModReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)%uint32(src)))
 }
 
-func InstALU64ModReg(i asm.Instruction, process *Process) error {
+func instALU64ModReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst%src)
 }
 
-func InstALU32XorIMM(i asm.Instruction, process *Process) error {
+func instALU32XorIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)^uint32(i.Constant)))
 }
 
-func InstALU64XorIMM(i asm.Instruction, process *Process) error {
+func instALU64XorIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, dst^uint64(i.Constant))
 }
 
-func InstALU32XorReg(i asm.Instruction, process *Process) error {
+func instALU32XorReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(dst)^uint32(src)))
 }
 
-func InstALU64XorReg(i asm.Instruction, process *Process) error {
+func instALU64XorReg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, dst^src)
 }
 
-func InstJump32JEqIMM(i asm.Instruction, process *Process) error {
+func instJump32JEqIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) == uint32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -233,7 +233,7 @@ func InstJump32JEqIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JEqIMM(i asm.Instruction, process *Process) error {
+func instJump64JEqIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if dst == uint64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -242,7 +242,7 @@ func InstJump64JEqIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JEqReg(i asm.Instruction, process *Process) error {
+func instJump32JEqReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) == uint32(src) {
@@ -252,7 +252,7 @@ func InstJump32JEqReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JEqReg(i asm.Instruction, process *Process) error {
+func instJump64JEqReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if dst == src {
@@ -262,7 +262,7 @@ func InstJump64JEqReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JGTIMM(i asm.Instruction, process *Process) error {
+func instJump32JGTIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) > uint32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -271,7 +271,7 @@ func InstJump32JGTIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JGTIMM(i asm.Instruction, process *Process) error {
+func instJump64JGTIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if dst > uint64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -280,7 +280,7 @@ func InstJump64JGTIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JGTReg(i asm.Instruction, process *Process) error {
+func instJump32JGTReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) > uint32(src) {
@@ -290,7 +290,7 @@ func InstJump32JGTReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JGTReg(i asm.Instruction, process *Process) error {
+func instJump64JGTReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if dst > src {
@@ -300,7 +300,7 @@ func InstJump64JGTReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JGEIMM(i asm.Instruction, process *Process) error {
+func instJump32JGEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) >= uint32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -309,7 +309,7 @@ func InstJump32JGEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JGEIMM(i asm.Instruction, process *Process) error {
+func instJump64JGEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if dst >= uint64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -318,7 +318,7 @@ func InstJump64JGEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JGEReg(i asm.Instruction, process *Process) error {
+func instJump32JGEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) >= uint32(src) {
@@ -328,7 +328,7 @@ func InstJump32JGEReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JGEReg(i asm.Instruction, process *Process) error {
+func instJump64JGEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if dst >= src {
@@ -338,7 +338,7 @@ func InstJump64JGEReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JNEIMM(i asm.Instruction, process *Process) error {
+func instJump32JNEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) != uint32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -347,7 +347,7 @@ func InstJump32JNEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JNEIMM(i asm.Instruction, process *Process) error {
+func instJump64JNEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if dst != uint64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -356,7 +356,7 @@ func InstJump64JNEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JNEReg(i asm.Instruction, process *Process) error {
+func instJump32JNEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) != uint32(src) {
@@ -366,7 +366,7 @@ func InstJump32JNEReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JNEReg(i asm.Instruction, process *Process) error {
+func instJump64JNEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if dst != src {
@@ -376,7 +376,7 @@ func InstJump64JNEReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JSGTIMM(i asm.Instruction, process *Process) error {
+func instJump32JSGTIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) > int32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -385,7 +385,7 @@ func InstJump32JSGTIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSGTIMM(i asm.Instruction, process *Process) error {
+func instJump64JSGTIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) > int64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -394,7 +394,7 @@ func InstJump64JSGTIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JSGTReg(i asm.Instruction, process *Process) error {
+func instJump32JSGTReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) > int32(src) {
@@ -404,7 +404,7 @@ func InstJump32JSGTReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSGTReg(i asm.Instruction, process *Process) error {
+func instJump64JSGTReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) > int64(src) {
@@ -414,7 +414,7 @@ func InstJump64JSGTReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JSGEIMM(i asm.Instruction, process *Process) error {
+func instJump32JSGEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) >= int32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -423,7 +423,7 @@ func InstJump32JSGEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSGEIMM(i asm.Instruction, process *Process) error {
+func instJump64JSGEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) >= int64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -432,7 +432,7 @@ func InstJump64JSGEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JSGEReg(i asm.Instruction, process *Process) error {
+func instJump32JSGEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) >= int32(src) {
@@ -442,7 +442,7 @@ func InstJump32JSGEReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSGEReg(i asm.Instruction, process *Process) error {
+func instJump64JSGEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) >= int64(src) {
@@ -452,7 +452,7 @@ func InstJump64JSGEReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JLTIMM(i asm.Instruction, process *Process) error {
+func instJump32JLTIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) < uint32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -461,7 +461,7 @@ func InstJump32JLTIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JLTIMM(i asm.Instruction, process *Process) error {
+func instJump64JLTIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if dst < uint64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -470,7 +470,7 @@ func InstJump64JLTIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JLTReg(i asm.Instruction, process *Process) error {
+func instJump32JLTReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) < uint32(src) {
@@ -480,7 +480,7 @@ func InstJump32JLTReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JLTReg(i asm.Instruction, process *Process) error {
+func instJump64JLTReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if dst < src {
@@ -490,7 +490,7 @@ func InstJump64JLTReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JLEIMM(i asm.Instruction, process *Process) error {
+func instJump32JLEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) <= uint32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -499,7 +499,7 @@ func InstJump32JLEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JLEIMM(i asm.Instruction, process *Process) error {
+func instJump64JLEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if dst <= uint64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -508,7 +508,7 @@ func InstJump64JLEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JLEReg(i asm.Instruction, process *Process) error {
+func instJump32JLEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst) <= uint32(src) {
@@ -518,7 +518,7 @@ func InstJump32JLEReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JLEReg(i asm.Instruction, process *Process) error {
+func instJump64JLEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if dst <= src {
@@ -528,7 +528,7 @@ func InstJump64JLEReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JSLTIMM(i asm.Instruction, process *Process) error {
+func instJump32JSLTIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) < int32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -537,7 +537,7 @@ func InstJump32JSLTIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSLTIMM(i asm.Instruction, process *Process) error {
+func instJump64JSLTIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) < int64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -546,7 +546,7 @@ func InstJump64JSLTIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JSLTReg(i asm.Instruction, process *Process) error {
+func instJump32JSLTReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) < int32(src) {
@@ -556,7 +556,7 @@ func InstJump32JSLTReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSLTReg(i asm.Instruction, process *Process) error {
+func instJump64JSLTReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) < int64(src) {
@@ -566,7 +566,7 @@ func InstJump64JSLTReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JSLEIMM(i asm.Instruction, process *Process) error {
+func instJump32JSLEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) <= int32(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -575,7 +575,7 @@ func InstJump32JSLEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSLEIMM(i asm.Instruction, process *Process) error {
+func instJump64JSLEIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) <= int64(i.Constant) {
 		process.Registers.PC += int(i.Offset)
@@ -584,7 +584,7 @@ func InstJump64JSLEIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JSLEReg(i asm.Instruction, process *Process) error {
+func instJump32JSLEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int32(dst) <= int32(src) {
@@ -594,7 +594,7 @@ func InstJump32JSLEReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSLEReg(i asm.Instruction, process *Process) error {
+func instJump64JSLEReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if int64(dst) <= int64(src) {
@@ -605,84 +605,84 @@ func InstJump64JSLEReg(i asm.Instruction, process *Process) error {
 }
 
 func initGen() {
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Add)] = InstALU32AddIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Add)] = InstALU64AddIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Add)|asm.OpCode(asm.RegSource)] = InstALU32AddReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Add)|asm.OpCode(asm.RegSource)] = InstALU64AddReg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Sub)] = InstALU32SubIMM
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JEq)] = InstJump64JEqIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JEq)] = InstJump32JEqIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Sub)] = InstALU64SubIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Sub)|asm.OpCode(asm.RegSource)] = InstALU32SubReg
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JEq)|asm.OpCode(asm.RegSource)] = InstJump64JEqReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JEq)|asm.OpCode(asm.RegSource)] = InstJump32JEqReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Sub)|asm.OpCode(asm.RegSource)] = InstALU64SubReg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mul)] = InstALU32MulIMM
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JGT)] = InstJump64JGTIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JGT)] = InstJump32JGTIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mul)] = InstALU64MulIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mul)|asm.OpCode(asm.RegSource)] = InstALU32MulReg
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JGT)|asm.OpCode(asm.RegSource)] = InstJump64JGTReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JGT)|asm.OpCode(asm.RegSource)] = InstJump32JGTReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mul)|asm.OpCode(asm.RegSource)] = InstALU64MulReg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Div)] = InstALU32DivIMM
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JGE)] = InstJump64JGEIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JGE)] = InstJump32JGEIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Div)] = InstALU64DivIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Div)|asm.OpCode(asm.RegSource)] = InstALU32DivReg
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JGE)|asm.OpCode(asm.RegSource)] = InstJump64JGEReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JGE)|asm.OpCode(asm.RegSource)] = InstJump32JGEReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Div)|asm.OpCode(asm.RegSource)] = InstALU64DivReg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Or)] = InstALU32OrIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Or)] = InstALU64OrIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Or)|asm.OpCode(asm.RegSource)] = InstALU32OrReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Or)|asm.OpCode(asm.RegSource)] = InstALU64OrReg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.And)] = InstALU32AndIMM
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JNE)] = InstJump64JNEIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JNE)] = InstJump32JNEIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.And)] = InstALU64AndIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.And)|asm.OpCode(asm.RegSource)] = InstALU32AndReg
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JNE)|asm.OpCode(asm.RegSource)] = InstJump64JNEReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JNE)|asm.OpCode(asm.RegSource)] = InstJump32JNEReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.And)|asm.OpCode(asm.RegSource)] = InstALU64AndReg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.LSh)] = InstALU32LShIMM
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSGT)] = InstJump64JSGTIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSGT)] = InstJump32JSGTIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.LSh)] = InstALU64LShIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.LSh)|asm.OpCode(asm.RegSource)] = InstALU32LShReg
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JSGT)|asm.OpCode(asm.RegSource)] = InstJump64JSGTReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSGT)|asm.OpCode(asm.RegSource)] = InstJump32JSGTReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.LSh)|asm.OpCode(asm.RegSource)] = InstALU64LShReg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.RSh)] = InstALU32RShIMM
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSGE)] = InstJump64JSGEIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSGE)] = InstJump32JSGEIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.RSh)] = InstALU64RShIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.RSh)|asm.OpCode(asm.RegSource)] = InstALU32RShReg
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JSGE)|asm.OpCode(asm.RegSource)] = InstJump64JSGEReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSGE)|asm.OpCode(asm.RegSource)] = InstJump32JSGEReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.RSh)|asm.OpCode(asm.RegSource)] = InstALU64RShReg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mod)] = InstALU32ModIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mod)] = InstALU64ModIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mod)|asm.OpCode(asm.RegSource)] = InstALU32ModReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mod)|asm.OpCode(asm.RegSource)] = InstALU64ModReg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Xor)] = InstALU32XorIMM
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JLT)] = InstJump64JLTIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JLT)] = InstJump32JLTIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Xor)] = InstALU64XorIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Xor)|asm.OpCode(asm.RegSource)] = InstALU32XorReg
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JLT)|asm.OpCode(asm.RegSource)] = InstJump64JLTReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JLT)|asm.OpCode(asm.RegSource)] = InstJump32JLTReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Xor)|asm.OpCode(asm.RegSource)] = InstALU64XorReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JLE)] = InstJump64JLEIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JLE)] = InstJump32JLEIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JLE)|asm.OpCode(asm.RegSource)] = InstJump64JLEReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JLE)|asm.OpCode(asm.RegSource)] = InstJump32JLEReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSLT)] = InstJump64JSLTIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSLT)] = InstJump32JSLTIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JSLT)|asm.OpCode(asm.RegSource)] = InstJump64JSLTReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSLT)|asm.OpCode(asm.RegSource)] = InstJump32JSLTReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSLE)] = InstJump64JSLEIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSLE)] = InstJump32JSLEIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JSLE)|asm.OpCode(asm.RegSource)] = InstJump64JSLEReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSLE)|asm.OpCode(asm.RegSource)] = InstJump32JSLEReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Add)] = instALU32AddIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Add)] = instALU64AddIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Add)|asm.OpCode(asm.RegSource)] = instALU32AddReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Add)|asm.OpCode(asm.RegSource)] = instALU64AddReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Sub)] = instALU32SubIMM
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JEq)] = instJump64JEqIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JEq)] = instJump32JEqIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Sub)] = instALU64SubIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Sub)|asm.OpCode(asm.RegSource)] = instALU32SubReg
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JEq)|asm.OpCode(asm.RegSource)] = instJump64JEqReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JEq)|asm.OpCode(asm.RegSource)] = instJump32JEqReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Sub)|asm.OpCode(asm.RegSource)] = instALU64SubReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mul)] = instALU32MulIMM
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JGT)] = instJump64JGTIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JGT)] = instJump32JGTIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mul)] = instALU64MulIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mul)|asm.OpCode(asm.RegSource)] = instALU32MulReg
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JGT)|asm.OpCode(asm.RegSource)] = instJump64JGTReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JGT)|asm.OpCode(asm.RegSource)] = instJump32JGTReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mul)|asm.OpCode(asm.RegSource)] = instALU64MulReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Div)] = instALU32DivIMM
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JGE)] = instJump64JGEIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JGE)] = instJump32JGEIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Div)] = instALU64DivIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Div)|asm.OpCode(asm.RegSource)] = instALU32DivReg
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JGE)|asm.OpCode(asm.RegSource)] = instJump64JGEReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JGE)|asm.OpCode(asm.RegSource)] = instJump32JGEReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Div)|asm.OpCode(asm.RegSource)] = instALU64DivReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Or)] = instALU32OrIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Or)] = instALU64OrIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Or)|asm.OpCode(asm.RegSource)] = instALU32OrReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Or)|asm.OpCode(asm.RegSource)] = instALU64OrReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.And)] = instALU32AndIMM
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JNE)] = instJump64JNEIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JNE)] = instJump32JNEIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.And)] = instALU64AndIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.And)|asm.OpCode(asm.RegSource)] = instALU32AndReg
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JNE)|asm.OpCode(asm.RegSource)] = instJump64JNEReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JNE)|asm.OpCode(asm.RegSource)] = instJump32JNEReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.And)|asm.OpCode(asm.RegSource)] = instALU64AndReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.LSh)] = instALU32LShIMM
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSGT)] = instJump64JSGTIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSGT)] = instJump32JSGTIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.LSh)] = instALU64LShIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.LSh)|asm.OpCode(asm.RegSource)] = instALU32LShReg
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JSGT)|asm.OpCode(asm.RegSource)] = instJump64JSGTReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSGT)|asm.OpCode(asm.RegSource)] = instJump32JSGTReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.LSh)|asm.OpCode(asm.RegSource)] = instALU64LShReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.RSh)] = instALU32RShIMM
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSGE)] = instJump64JSGEIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSGE)] = instJump32JSGEIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.RSh)] = instALU64RShIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.RSh)|asm.OpCode(asm.RegSource)] = instALU32RShReg
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JSGE)|asm.OpCode(asm.RegSource)] = instJump64JSGEReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSGE)|asm.OpCode(asm.RegSource)] = instJump32JSGEReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.RSh)|asm.OpCode(asm.RegSource)] = instALU64RShReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mod)] = instALU32ModIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mod)] = instALU64ModIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mod)|asm.OpCode(asm.RegSource)] = instALU32ModReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mod)|asm.OpCode(asm.RegSource)] = instALU64ModReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Xor)] = instALU32XorIMM
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JLT)] = instJump64JLTIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JLT)] = instJump32JLTIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Xor)] = instALU64XorIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Xor)|asm.OpCode(asm.RegSource)] = instALU32XorReg
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JLT)|asm.OpCode(asm.RegSource)] = instJump64JLTReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JLT)|asm.OpCode(asm.RegSource)] = instJump32JLTReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Xor)|asm.OpCode(asm.RegSource)] = instALU64XorReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JLE)] = instJump64JLEIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JLE)] = instJump32JLEIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JLE)|asm.OpCode(asm.RegSource)] = instJump64JLEReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JLE)|asm.OpCode(asm.RegSource)] = instJump32JLEReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSLT)] = instJump64JSLTIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSLT)] = instJump32JSLTIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JSLT)|asm.OpCode(asm.RegSource)] = instJump64JSLTReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSLT)|asm.OpCode(asm.RegSource)] = instJump32JSLTReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSLE)] = instJump64JSLEIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSLE)] = instJump32JSLEIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetJumpOp(asm.JSLE)|asm.OpCode(asm.RegSource)] = instJump64JSLEReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSLE)|asm.OpCode(asm.RegSource)] = instJump32JSLEReg
 }

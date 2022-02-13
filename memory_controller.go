@@ -23,6 +23,8 @@ type MemoryController struct {
 	objToEntry map[interface{}]*MemoryEntry
 }
 
+// GetAllEntries returns all memory entries, the returned slice are copies of the actual entries so they can't
+// be used to modify internal state.
 func (mc *MemoryController) GetAllEntries() []MemoryEntry {
 	mc.mu.RLock()
 	defer mc.mu.RUnlock()
@@ -35,6 +37,7 @@ func (mc *MemoryController) GetAllEntries() []MemoryEntry {
 	return ls
 }
 
+// String implements fmt.Stringer
 func (mc *MemoryController) String() string {
 	mc.mu.RLock()
 	defer mc.mu.RUnlock()
@@ -51,6 +54,7 @@ func (mc *MemoryController) String() string {
 // can't be interpreted as addresses.
 const memStart = 0xFFFF
 
+// AddEntry adds a new memory entry to the controller.
 func (mc *MemoryController) AddEntry(obj interface{}, size uint32, name string) (MemoryEntry, error) {
 	// 0. Take write lock on mutex
 	mc.mu.Lock()
@@ -107,6 +111,9 @@ func (mc *MemoryController) AddEntry(obj interface{}, size uint32, name string) 
 	return *mc.entries[i], nil
 }
 
+// GetEntry returns the memory entry matching the given virtual address. This method also returns the offset into the
+// entry. An `addr` of 0x14 might for example resolve to an entry at 0x10 of size 8 and an offset of 0x04 into that
+// entry. The last return value is a boolean which is true if an entry was found, and false if no entry was found.
 func (mc *MemoryController) GetEntry(addr uint32) (MemoryEntry, uint32, bool) {
 	// 0. Take read lock on mutex
 	mc.mu.RLock()
@@ -137,6 +144,8 @@ func (mc *MemoryController) GetEntry(addr uint32) (MemoryEntry, uint32, bool) {
 	return MemoryEntry{}, 0, false
 }
 
+// GetEntryByObject return the memory entry which points to the given object. The boolean indicates if a entry was
+// found.
 func (mc *MemoryController) GetEntryByObject(obj interface{}) (MemoryEntry, bool) {
 	// 0. Take read lock on mutex
 	mc.mu.RLock()
@@ -153,6 +162,8 @@ func (mc *MemoryController) GetEntryByObject(obj interface{}) (MemoryEntry, bool
 	return *entry, true
 }
 
+// DelEntryByAddr deletes a memory entry by virtual address `addr`, which might be any value between the entries Addr
+// and Addr+Size.
 func (mc *MemoryController) DelEntryByAddr(addr uint32) error {
 	// 0. Take write lock on mutex
 	mc.mu.Lock()
@@ -187,6 +198,7 @@ func (mc *MemoryController) DelEntryByAddr(addr uint32) error {
 	return nil
 }
 
+// DelEntryByObj deletes the entry from the memory controller which resolves to the given object.
 func (mc *MemoryController) DelEntryByObj(obj interface{}) error {
 	// 0. Take write lock on mutex
 	mc.mu.Lock()
@@ -219,6 +231,9 @@ func (mc *MemoryController) DelEntryByObj(obj interface{}) error {
 	return nil
 }
 
+// MemoryEntry is returned by the MemoryController, each entry has a name `Which`` is used for debugging purposes.
+// Virtual address `Addr`, allocation size `Size` and a `Object` which is what the `Addr` resolves to.
+// Any virtual address between `Addr` and `Addr`+`Size` resolves to this entry.
 type MemoryEntry struct {
 	Name   string
 	Addr   uint32
@@ -226,6 +241,7 @@ type MemoryEntry struct {
 	Object interface{}
 }
 
+// Copy makes a value copy of the MemoryEntry, the new entry will still point to the same Object
 func (me MemoryEntry) Copy() MemoryEntry {
 	return MemoryEntry{
 		Name:   me.Name,
@@ -249,6 +265,9 @@ type VMMem interface {
 
 var _ VMMem = (*PlainMemory)(nil)
 
+// PlainMemory is the simplest implementation of VMMem possible, it is just a []byte with no additional information
+// about its contents. The ByteOrder is used when Load'in or Store'ing scalar values. If ByteOrder is not set
+// the native endianness will be used.
 type PlainMemory struct {
 	Backing   []byte
 	ByteOrder binary.ByteOrder
@@ -258,6 +277,7 @@ type PlainMemory struct {
 // good candidate for a freelist/memory pool since they can be large. In the case of plain memory we would have to
 // group them by size.
 
+// Load loads a scalar value of the given `size` and `offset` from the memory.
 func (pm *PlainMemory) Load(offset uint32, size asm.Size) (uint64, error) {
 	bytes := size.Sizeof()
 	if int(offset)+bytes > len(pm.Backing) {
@@ -287,6 +307,7 @@ func (pm *PlainMemory) Load(offset uint32, size asm.Size) (uint64, error) {
 	}
 }
 
+// Store stores a scalar value of the given `size` and `offset` from the memory.
 func (pm *PlainMemory) Store(offset uint32, value uint64, size asm.Size) error {
 	bytes := size.Sizeof()
 	if int(offset)+bytes > len(pm.Backing) {
@@ -355,6 +376,7 @@ func (pm *PlainMemory) Write(offset uint32, b []byte) error {
 
 var nativeEndian binary.ByteOrder
 
+// GetNativeEndianness returns the binary.ByteOrder matching the endianess of the current machine
 func GetNativeEndianness() binary.ByteOrder {
 	if nativeEndian != nil {
 		return nativeEndian

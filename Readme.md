@@ -1,4 +1,5 @@
 # Mimic (eBPF userspace emulator)
+[![Go Reference](https://pkg.go.dev/badge/github.com/dylandreimerink/mimic.svg)](https://pkg.go.dev/github.com/dylandreimerink/mimic)
 
 Mimic is a eBPF virtual machine and emulator which runs in userspace. Mimic attempts to 'mimic' the eBPF machinery we find in the Linux kernel, as well as other possible implementation/environments. 
 
@@ -186,10 +187,10 @@ Note: Marked list items were on the list, but have since been implemented.
 
 **Project quality**
 
-- [ ] Linting
+- [x] Linting
 - [ ] CI
 - [ ] Decent unit test coverage
-- [ ] Comments on all exported structs for GoDoc generation
+- [x] Comments on all exported structs for GoDoc generation
 - [ ] Usage examples
 - [ ] Linux selftest mirroring (if we execute the linux eBPF selftests and get a positive result, can can conclude that the implementation matches)
 - [ ] Benchmarking

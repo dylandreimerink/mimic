@@ -33,10 +33,12 @@ type LinuxContextXDP struct {
 	xdpMD *PlainMemory
 }
 
+// GetName return the context name
 func (c *LinuxContextXDP) GetName() string {
 	return c.Name
 }
 
+// Load load the context into the memory of the process
 func (c *LinuxContextXDP) Load(process *Process) error {
 	if c.pkt != nil || c.xdpMD != nil {
 		return fmt.Errorf("context is already loaded, cleanup first before re-loading")
@@ -107,6 +109,7 @@ func (c *LinuxContextXDP) Load(process *Process) error {
 	return nil
 }
 
+// Cleanup removes the context from the processes memory and makes the context ready to be re-used/re-loaded.
 func (c *LinuxContextXDP) Cleanup(process *Process) error {
 	err := process.VM.MemoryController.DelEntryByObj(c.pkt)
 	if err != nil {

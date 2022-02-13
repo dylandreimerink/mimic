@@ -19,6 +19,7 @@ func unmarshalGeneric(name string, ctx json.RawMessage) (Context, error) {
 	return &result, nil
 }
 
+// GenericContextRegisters are registers which the generic context can set when loading
 type GenericContextRegisters struct {
 	R1 string `json:"r1,omitempty"`
 	R2 string `json:"r2,omitempty"`
@@ -27,6 +28,10 @@ type GenericContextRegisters struct {
 	R5 string `json:"r5,omitempty"`
 }
 
+// GenericContext implements mimic.Context. The goal of GenericContext and its GenericContext... struct types is to
+// provide a method to construct any type of eBPF context. Being generic also means we have to be very verbose which
+// is not always desirable, it is recommended to use specific contexts whenever possible, but this type can always be
+// used as a fallback in situations where no specific context type exists.
 type GenericContext struct {
 	Name      string                  `json:"-"`
 	Registers GenericContextRegisters `json:"registers"`
@@ -36,6 +41,7 @@ type GenericContext struct {
 	loaded bool
 }
 
+// MarshalJSON implements json.Marshaler
 func (c *GenericContext) MarshalJSON() ([]byte, error) {
 	type Alias GenericContext
 	a := Alias(*c)
@@ -53,10 +59,14 @@ func (c *GenericContext) MarshalJSON() ([]byte, error) {
 	return json.Marshal(proto)
 }
 
+// GetName returns the name of the context
 func (c *GenericContext) GetName() string {
 	return c.Name
 }
 
+// Load loads the context into a process. Load is called by the VM when creating a new process, users don't have to
+// call this function manually. Loading a context into a process will register memory for the context at the memory
+// controller of the VM.
 func (c *GenericContext) Load(process *Process) error {
 	if c.loaded {
 		return fmt.Errorf("context is already loaded, please cleanup before re-loading")
@@ -148,6 +158,9 @@ func (c *GenericContext) Load(process *Process) error {
 	return nil
 }
 
+// Cleanup cleans up the context, the process call this function the Process.Cleanup is called, users should not have to
+// manually call this function. Cleaning up the context will remove the associated memory from the processes memory
+// controller and make the context ready to be re-used/re-loaded.
 func (c *GenericContext) Cleanup(process *Process) error {
 	c.loaded = false
 
@@ -170,6 +183,8 @@ func (c *GenericContext) Cleanup(process *Process) error {
 	return nil
 }
 
+// GenericContextMemory represents a named memory object in the generic context, which can be one of multiple actual
+// different memory types. The name for each type within a generic context should be unique.
 type GenericContextMemory struct {
 	Name     string          `json:"name"`
 	Type     string          `json:"type"`
@@ -181,6 +196,7 @@ type GenericContextMemory struct {
 	Int     *GenericContextInt         `json:"-"`
 }
 
+// MarshalJSON implements json.Marshaler
 func (m *GenericContextMemory) MarshalJSON() ([]byte, error) {
 	if m.Block != nil {
 		m.Type = "block"
@@ -223,6 +239,7 @@ func (m *GenericContextMemory) MarshalJSON() ([]byte, error) {
 	return json.Marshal(a)
 }
 
+// UnmarshalJSON implements json.Unmarshaler
 func (m *GenericContextMemory) UnmarshalJSON(b []byte) error {
 	// Creating an alias of the current type makes it so that we can call json.Unmarshal on Alias without
 	// causing a UnmarshalJSON->UnmarshalJSON infinite look
@@ -261,6 +278,8 @@ func (m *GenericContextMemory) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// GenericContextMemoryBlock is a block of memory, the `Value` will be loaded into the memory controller as a
+// PlainMemory object.
 type GenericContextMemoryBlock struct {
 	Value     []byte
 	ByteOrder binary.ByteOrder
@@ -276,6 +295,7 @@ type pseudoGenericContextMemoryBlock struct {
 	ByteOrder string `json:"byteorder"`
 }
 
+// MarshalJSON implements json.Marshaler
 func (m *GenericContextMemoryBlock) MarshalJSON() ([]byte, error) {
 	if m.ByteOrder == nil {
 		m.ByteOrder = GetNativeEndianness()
@@ -289,6 +309,7 @@ func (m *GenericContextMemoryBlock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(pseudo)
 }
 
+// UnmarshalJSON implements json.Unmarshaler
 func (m *GenericContextMemoryBlock) UnmarshalJSON(b []byte) error {
 	var pseudo pseudoGenericContextMemoryBlock
 	err := json.Unmarshal(b, &pseudo)
@@ -313,6 +334,8 @@ func (m *GenericContextMemoryBlock) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// GetAddr returns the virtual address of block of memory within the process. If the block is not yet loaded, calling
+// this function will cause the load. If the block was already loaded, the existing memory address is returned.
 func (m *GenericContextMemoryBlock) GetAddr(p *Process, g *GenericContextMemory) (uint32, error) {
 	if m.addr != 0 {
 		return m.addr, nil
@@ -337,6 +360,7 @@ func (m *GenericContextMemoryBlock) GetAddr(p *Process, g *GenericContextMemory)
 	return m.addr, nil
 }
 
+// Cleanup will remove the memory block from the memory controller of the given process.
 func (m *GenericContextMemoryBlock) Cleanup(p *Process) error {
 	if m.addr == 0 {
 		return nil
@@ -352,12 +376,16 @@ func (m *GenericContextMemoryBlock) Cleanup(p *Process) error {
 	return nil
 }
 
+// GenericContextPointer is a pointer to other memory defined in GenericContext.Memory. Offset is the offset from the
+// start of the memory block in bytes and Size is the size of the pointer in bits(32 or 64).
+// Pointers can only point to "block" and "struct" memory objects.
 type GenericContextPointer struct {
 	Memory string `json:"memory"`
 	Offset int    `json:"offset"`
 	Size   int    `json:"size"`
 }
 
+// GetValue returns the value of the pointer(the address of the memory we point to plus the allocation)
 func (ptr *GenericContextPointer) GetValue(p *Process, g *GenericContext) (uint32, error) {
 	var mem *GenericContextMemory
 	for i, m := range g.Memory {
@@ -390,6 +418,8 @@ func (ptr *GenericContextPointer) GetValue(p *Process, g *GenericContext) (uint3
 	}
 }
 
+// GenericContextStruct is a memory object which describes a memory structure which can be translated into a PlainMemory
+// object and loaded into the memory controller of a process.
 type GenericContextStruct struct {
 	Fields []GenericContextStructField
 
@@ -397,14 +427,18 @@ type GenericContextStruct struct {
 	addr uint32
 }
 
+// MarshalJSON implements json.Marshaler
 func (s *GenericContextStruct) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.Fields)
 }
 
+// UnmarshalJSON implements json.Unmarshaler
 func (s *GenericContextStruct) UnmarshalJSON(b []byte) error {
 	return json.Unmarshal(b, &s.Fields)
 }
 
+// GetAddr returns the virtual address of the structure. The call to this function will cause the struct to be
+// registered with the memory controller of the process, subsequent calls will return the same address.
 func (s *GenericContextStruct) GetAddr(p *Process, g *GenericContext, m *GenericContextMemory) (uint32, error) {
 	if s.addr != 0 {
 		return s.addr, nil
@@ -481,6 +515,7 @@ func (s *GenericContextStruct) GetAddr(p *Process, g *GenericContext, m *Generic
 	return s.addr, nil
 }
 
+// Cleanup removes the structure from the processes memory controller
 func (s *GenericContextStruct) Cleanup(p *Process) error {
 	if s.addr == 0 {
 		return nil
@@ -496,16 +531,19 @@ func (s *GenericContextStruct) Cleanup(p *Process) error {
 	return nil
 }
 
+// GenericContextStructField describes a field of GenericContextStruct
 type GenericContextStructField struct {
 	Name   string `json:"name"`
 	Memory string `json:"memory"`
 }
 
+// GenericContextInt is a memory object describing a interger value of a specific bit size(8, 16, 32, or 64).
 type GenericContextInt struct {
 	Value int64 `json:"value"`
 	Size  int   `json:"size"`
 }
 
+// GetValue returns the bytes for the given integer in the native byte order.
 func (i *GenericContextInt) GetValue() ([]byte, error) {
 	switch i.Size {
 	case 8:

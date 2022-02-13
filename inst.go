@@ -8,9 +8,9 @@ import (
 	"github.com/cilium/ebpf/asm"
 )
 
-var instructions [256]Instruction
+var instructions [256]instruction
 
-type Instruction func(inst asm.Instruction, process *Process) error
+type instruction func(inst asm.Instruction, process *Process) error
 
 func init() {
 	initGen()
@@ -20,122 +20,122 @@ func init() {
 // init func for hand crafted instructions which are so different from the others that writing a generator isn't worth
 // the time.
 func initCustom() {
-	instructions[0] = InstNop
+	instructions[0] = instNop
 
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Neg)] = InstALU32Neg
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Neg)|asm.OpCode(asm.RegSource)] = InstALU32Neg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Neg)] = InstALU64Neg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Neg)|asm.OpCode(asm.RegSource)] = InstALU64Neg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Neg)] = instALU32Neg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Neg)|asm.OpCode(asm.RegSource)] = instALU32Neg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Neg)] = instALU64Neg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Neg)|asm.OpCode(asm.RegSource)] = instALU64Neg
 
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mov)] = InstALU32MovIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mov)|asm.OpCode(asm.RegSource)] = InstALU32MovReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mov)] = InstALU64MovIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mov)|asm.OpCode(asm.RegSource)] = InstALU64MovReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mov)] = instALU32MovIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mov)|asm.OpCode(asm.RegSource)] = instALU32MovReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mov)] = instALU64MovIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mov)|asm.OpCode(asm.RegSource)] = instALU64MovReg
 
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mov)] = InstALU32MovIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mov)|asm.OpCode(asm.RegSource)] = InstALU32MovReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mov)] = InstALU64MovIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mov)|asm.OpCode(asm.RegSource)] = InstALU64MovReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mov)] = instALU32MovIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Mov)|asm.OpCode(asm.RegSource)] = instALU32MovReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mov)] = instALU64MovIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.Mov)|asm.OpCode(asm.RegSource)] = instALU64MovReg
 
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.ArSh)] = InstALU32ArShIMM
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.ArSh)|asm.OpCode(asm.RegSource)] = InstALU32ArShReg
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.ArSh)] = InstALU64ArShIMM
-	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.ArSh)|asm.OpCode(asm.RegSource)] = InstALU64ArShReg
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.ArSh)] = instALU32ArShIMM
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.ArSh)|asm.OpCode(asm.RegSource)] = instALU32ArShReg
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.ArSh)] = instALU64ArShIMM
+	instructions[asm.OpCode(asm.ALU64Class).SetALUOp(asm.ArSh)|asm.OpCode(asm.RegSource)] = instALU64ArShReg
 
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Swap)] = InstALUToLE
-	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Swap)|asm.OpCode(asm.RegSource)] = InstALUToBE
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Swap)] = instALUToLE
+	instructions[asm.OpCode(asm.ALUClass).SetALUOp(asm.Swap)|asm.OpCode(asm.RegSource)] = instALUToBE
 
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.Ja)] = InstJump
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.Ja)] = instJump
 
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSet)] = InstJump32JSetIMM
-	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSet)|asm.OpCode(asm.RegSource)] = InstJump32JSetReg
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSet)] = InstJump64JSetIMM
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSet)|asm.OpCode(asm.RegSource)] = InstJump64JSetReg
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSet)] = instJump32JSetIMM
+	instructions[asm.OpCode(asm.Jump32Class).SetJumpOp(asm.JSet)|asm.OpCode(asm.RegSource)] = instJump32JSetReg
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSet)] = instJump64JSetIMM
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.JSet)|asm.OpCode(asm.RegSource)] = instJump64JSetReg
 
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.Call)] = InstCall
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.Call)|asm.OpCode(asm.RegSource)] = InstCallHelperIndirect
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.Call)] = instCall
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.Call)|asm.OpCode(asm.RegSource)] = instCallHelperIndirect
 
-	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.Exit)] = InstExit
+	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.Exit)] = instExit
 
-	instructions[asm.OpCode(asm.LdClass).SetMode(asm.ImmMode).SetSize(asm.DWord)] = InstLoad64Imm
+	instructions[asm.OpCode(asm.LdClass).SetMode(asm.ImmMode).SetSize(asm.DWord)] = instLoad64Imm
 	// TODO Load socket buffer
-	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.Byte)] = InstLoadMemory
-	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.Half)] = InstLoadMemory
-	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.Word)] = InstLoadMemory
-	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.DWord)] = InstLoadMemory
+	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.Byte)] = instLoadMemory
+	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.Half)] = instLoadMemory
+	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.Word)] = instLoadMemory
+	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.DWord)] = instLoadMemory
 
-	instructions[asm.OpCode(asm.StClass).SetMode(asm.MemMode).SetSize(asm.Byte)] = InstStoreMemoryImm
-	instructions[asm.OpCode(asm.StClass).SetMode(asm.MemMode).SetSize(asm.Half)] = InstStoreMemoryImm
-	instructions[asm.OpCode(asm.StClass).SetMode(asm.MemMode).SetSize(asm.Word)] = InstStoreMemoryImm
-	instructions[asm.OpCode(asm.StClass).SetMode(asm.MemMode).SetSize(asm.DWord)] = InstStoreMemoryImm
+	instructions[asm.OpCode(asm.StClass).SetMode(asm.MemMode).SetSize(asm.Byte)] = instStoreMemoryImm
+	instructions[asm.OpCode(asm.StClass).SetMode(asm.MemMode).SetSize(asm.Half)] = instStoreMemoryImm
+	instructions[asm.OpCode(asm.StClass).SetMode(asm.MemMode).SetSize(asm.Word)] = instStoreMemoryImm
+	instructions[asm.OpCode(asm.StClass).SetMode(asm.MemMode).SetSize(asm.DWord)] = instStoreMemoryImm
 
-	instructions[asm.OpCode(asm.StXClass).SetMode(asm.MemMode).SetSize(asm.Byte)] = InstStoreMemoryReg
-	instructions[asm.OpCode(asm.StXClass).SetMode(asm.MemMode).SetSize(asm.Half)] = InstStoreMemoryReg
-	instructions[asm.OpCode(asm.StXClass).SetMode(asm.MemMode).SetSize(asm.Word)] = InstStoreMemoryReg
-	instructions[asm.OpCode(asm.StXClass).SetMode(asm.MemMode).SetSize(asm.DWord)] = InstStoreMemoryReg
+	instructions[asm.OpCode(asm.StXClass).SetMode(asm.MemMode).SetSize(asm.Byte)] = instStoreMemoryReg
+	instructions[asm.OpCode(asm.StXClass).SetMode(asm.MemMode).SetSize(asm.Half)] = instStoreMemoryReg
+	instructions[asm.OpCode(asm.StXClass).SetMode(asm.MemMode).SetSize(asm.Word)] = instStoreMemoryReg
+	instructions[asm.OpCode(asm.StXClass).SetMode(asm.MemMode).SetSize(asm.DWord)] = instStoreMemoryReg
 
 	// TODO atomics
 }
 
-// InstNop doesn't officially exist, and doesn't do anything. It exists to be added after LDImm64 instructions,
+// instNop doesn't officially exist, and doesn't do anything. It exists to be added after LDImm64 instructions,
 // jump offsets count them as 2 instructions but in the instructions slice it is only one instruction.
-func InstNop(i asm.Instruction, process *Process) error {
+func instNop(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstALU32Neg(i asm.Instruction, process *Process) error {
+func instALU32Neg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(-int32(dst)))
 }
 
-func InstALU64Neg(i asm.Instruction, process *Process) error {
+func instALU64Neg(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(-int64(dst)))
 }
 
-func InstALU32MovIMM(i asm.Instruction, process *Process) error {
+func instALU32MovIMM(i asm.Instruction, process *Process) error {
 	// TODO is this correct, or should we preserve the upper 32bits?
 	return process.Registers.Set(i.Dst, uint64(uint32(i.Constant)))
 }
 
-func InstALU32MovReg(i asm.Instruction, process *Process) error {
+func instALU32MovReg(i asm.Instruction, process *Process) error {
 	// TODO is this correct, or should we preserve the upper 32bits?
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, uint64(uint32(src)))
 }
 
-func InstALU64MovIMM(i asm.Instruction, process *Process) error {
+func instALU64MovIMM(i asm.Instruction, process *Process) error {
 	return process.Registers.Set(i.Dst, uint64(i.Constant))
 }
 
-func InstALU64MovReg(i asm.Instruction, process *Process) error {
+func instALU64MovReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	return process.Registers.Set(i.Dst, src)
 }
 
-func InstALU32ArShIMM(i asm.Instruction, process *Process) error {
+func instALU32ArShIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(int32(dst)>>i.Constant))
 }
 
-func InstALU32ArShReg(i asm.Instruction, process *Process) error {
+func instALU32ArShReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(int32(dst)>>src))
 }
 
-func InstALU64ArShIMM(i asm.Instruction, process *Process) error {
+func instALU64ArShIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(int64(dst)>>i.Constant))
 }
 
-func InstALU64ArShReg(i asm.Instruction, process *Process) error {
+func instALU64ArShReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	return process.Registers.Set(i.Dst, uint64(int64(dst)>>src))
 }
 
-func InstALUToLE(i asm.Instruction, process *Process) error {
+func instALUToLE(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	switch i.Constant {
 	case 16:
@@ -166,7 +166,7 @@ func InstALUToLE(i asm.Instruction, process *Process) error {
 	return process.Registers.Set(i.Dst, dst)
 }
 
-func InstALUToBE(i asm.Instruction, process *Process) error {
+func instALUToBE(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	switch i.Constant {
 	case 16:
@@ -197,12 +197,12 @@ func InstALUToBE(i asm.Instruction, process *Process) error {
 	return process.Registers.Set(i.Dst, dst)
 }
 
-func InstJump(i asm.Instruction, process *Process) error {
+func instJump(i asm.Instruction, process *Process) error {
 	process.Registers.PC += int(i.Offset)
 	return nil
 }
 
-func InstJump32JSetIMM(i asm.Instruction, process *Process) error {
+func instJump32JSetIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst)&uint32(i.Constant) == 0 {
 		process.Registers.PC += int(i.Offset)
@@ -211,7 +211,7 @@ func InstJump32JSetIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSetIMM(i asm.Instruction, process *Process) error {
+func instJump64JSetIMM(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	if dst&uint64(i.Constant) == 0 {
 		process.Registers.PC += int(i.Offset)
@@ -220,7 +220,7 @@ func InstJump64JSetIMM(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump32JSetReg(i asm.Instruction, process *Process) error {
+func instJump32JSetReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if uint32(dst)&uint32(src) == 0 {
@@ -230,7 +230,7 @@ func InstJump32JSetReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstJump64JSetReg(i asm.Instruction, process *Process) error {
+func instJump64JSetReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	if dst&src == 0 {
@@ -240,7 +240,7 @@ func InstJump64JSetReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstCall(i asm.Instruction, process *Process) error {
+func instCall(i asm.Instruction, process *Process) error {
 	if i.Src == asm.PseudoCall {
 		// BPF-to-BPF call
 
@@ -265,16 +265,16 @@ func InstCall(i asm.Instruction, process *Process) error {
 	return process.VM.settings.Emulator.CallHelperFunction(int32(i.Constant), process)
 }
 
-// InstCallHelperIndirect is illegal in the linux kernel, but we have it here to support non-kernel eBPF implementation.
+// instCallHelperIndirect is illegal in the linux kernel, but we have it here to support non-kernel eBPF implementation.
 // This instruction is generated by clang when optimizations are disabled.
-func InstCallHelperIndirect(i asm.Instruction, process *Process) error {
+func instCallHelperIndirect(i asm.Instruction, process *Process) error {
 	// Helper call, id of the helper resides in the register marked by i.Constant
 	panic("not yet implemented")
 }
 
 var errExit = errors.New("function/program exit")
 
-func InstExit(i asm.Instruction, process *Process) error {
+func instExit(i asm.Instruction, process *Process) error {
 	// If there are callee saves registers, we are returning from a BPF-to-BPF function.
 	if len(process.calleeSavedRegister) > 0 {
 		// Restore the only the callee saved registers and program counter
@@ -295,7 +295,7 @@ func InstExit(i asm.Instruction, process *Process) error {
 	return errExit
 }
 
-func InstLoadMemory(i asm.Instruction, process *Process) error {
+func instLoadMemory(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	addr := uint32(src + uint64(i.Offset))
 
@@ -317,7 +317,7 @@ func InstLoadMemory(i asm.Instruction, process *Process) error {
 	return process.Registers.Set(i.Dst, val)
 }
 
-func InstStoreMemoryImm(i asm.Instruction, process *Process) error {
+func instStoreMemoryImm(i asm.Instruction, process *Process) error {
 	dst := process.Registers.Get(i.Dst)
 	addr := uint32(dst + uint64(i.Offset))
 
@@ -339,7 +339,7 @@ func InstStoreMemoryImm(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstStoreMemoryReg(i asm.Instruction, process *Process) error {
+func instStoreMemoryReg(i asm.Instruction, process *Process) error {
 	src := process.Registers.Get(i.Src)
 	dst := process.Registers.Get(i.Dst)
 	addr := uint32(dst + uint64(i.Offset))
@@ -362,6 +362,6 @@ func InstStoreMemoryReg(i asm.Instruction, process *Process) error {
 	return nil
 }
 
-func InstLoad64Imm(i asm.Instruction, process *Process) error {
+func instLoad64Imm(i asm.Instruction, process *Process) error {
 	return process.Registers.Set(i.Dst, uint64(i.Constant))
 }

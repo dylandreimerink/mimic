@@ -10,14 +10,17 @@ import (
 	"github.com/cilium/ebpf/asm"
 )
 
+// VMSettings are the actual settings of the VM, VMOpt's can change an instance of these settings.
 type VMSettings struct {
 	Emulator        Emulator
 	StackFrameSize  int
 	StackFrameCount int
 }
 
+// VMOpt is a option which can be used during the creation of a VM with the NewVM function
 type VMOpt func(*VMSettings)
 
+// VMOptEmulator is used to assign an Emulator to a VM
 func VMOptEmulator(e Emulator) VMOpt {
 	return func(v *VMSettings) {
 		v.Emulator = e
@@ -34,6 +37,7 @@ type VM struct {
 	settings VMSettings
 }
 
+// NewVM create a new eBPF virtual machine from the given options.
 func NewVM(opts ...VMOpt) *VM {
 	vm := &VM{
 		settings: VMSettings{
@@ -70,6 +74,9 @@ func (vm *VM) GetPrograms() []*ebpf.ProgramSpec {
 	return ls
 }
 
+// AddProgram adds a program to the VM. Doing so will cause the VM to rewrite the program to make it ready for
+// execution. On success a unique identifier for the program is returned, which can be used in calls to NewProcess
+// to specify the entrypoint program.
 func (vm *VM) AddProgram(prog *ebpf.ProgramSpec) (int, error) {
 	vm.programsMu.Lock()
 	defer vm.programsMu.Unlock()
@@ -125,6 +132,8 @@ func (vm *VM) AddProgram(prog *ebpf.ProgramSpec) (int, error) {
 	return len(vm.programs) - 1, nil
 }
 
+// NewProcess spawns a new process, `entrypoint` specifies the entrypoint program and `ctx` the context for the process
+// which may be nil, if no context information is needed.
 func (vm *VM) NewProcess(entrypoint int, ctx Context) (*Process, error) {
 	vm.programsMu.RLock()
 	defer vm.programsMu.RUnlock()
@@ -183,6 +192,9 @@ type Process struct {
 var errInvalidProgramCount = errors.New("program counter points to non-existent instruction, bad jump of missing " +
 	"exit instruction")
 
+// Step "steps" through one program instruction. If this function returns `exited` == true, it means that the program
+// has stop execution, subsequent calls to Step will be ineffective. If `err` != nil, it means that a fatal error was
+// encountered and that the process can't continue execution subsequent calls to Step will be ineffective.
 func (p *Process) Step() (exited bool, err error) {
 	if p.exited {
 		return true, fmt.Errorf("process has been terminated")
@@ -292,6 +304,7 @@ type Registers struct {
 	R10 uint64
 }
 
+// Get returns the value fo a given `asmReg`
 func (r *Registers) Get(asmReg asm.Register) uint64 {
 	switch asmReg {
 	case asm.R0:
@@ -321,6 +334,7 @@ func (r *Registers) Get(asmReg asm.Register) uint64 {
 	}
 }
 
+// Set sets the value of a given `asmReg` to `value`
 func (r *Registers) Set(asmReg asm.Register, value uint64) error {
 	switch asmReg {
 	case asm.R0:
