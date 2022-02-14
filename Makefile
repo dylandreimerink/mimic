@@ -56,7 +56,7 @@ bin/golangci-lint-${GOLANGCI_VERSION}:
 .PHONY: lint
 lint: bin/golangci-lint bin/revive ## Run linter
 	bin/golangci-lint run
-	bin/revive -set_exit_status=1
+	bin/revive -set_exit_status=1 -exclude="*_test.go"
 
 .PHONY: fix
 fix: bin/golangci-lint ## Fix lint violations

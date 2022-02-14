@@ -188,7 +188,7 @@ Note: Marked list items were on the list, but have since been implemented.
 **Project quality**
 
 - [x] Linting
-- [ ] CI
+- [X] CI
 - [ ] Decent unit test coverage
 - [x] Comments on all exported structs for GoDoc generation
 - [ ] Usage examples
@@ -197,8 +197,8 @@ Note: Marked list items were on the list, but have since been implemented.
 
 **Generic features**
 
-- [ ] Process schedulers
-  - [ ] Per-CPU scheduler. Running eBPF processes on a worker pool no larger than the amount of logical CPU's. Theoretically the fastest for CPU heavy workloads.
+- [x] Process schedulers
+  - [x] Per-CPU scheduler. Running eBPF processes on a worker pool no larger than the amount of logical CPU's. Theoretically the fastest for CPU heavy workloads.
   - [ ] Naive scheduling. Running each process in a Goroutine, mostly useful for programs which don't rely on Per-CPU maps and are I/O heavy or blocking.
 - [ ] `sk_buff` context. The Linux `sk_buff` structure is very complex, and would be hard to craft with the generic context. Making a purpose built context type for it seems logical.
 
@@ -412,7 +412,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [x] BPF_MAP_TYPE_PROG_ARRAY
 - [ ] BPF_MAP_TYPE_PERF_EVENT_ARRAY
 - [ ] BPF_MAP_TYPE_PERCPU_HASH
-- [ ] BPF_MAP_TYPE_PERCPU_ARRAY
+- [x] BPF_MAP_TYPE_PERCPU_ARRAY
 - [ ] BPF_MAP_TYPE_STACK_TRACE
 - [ ] BPF_MAP_TYPE_CGROUP_ARRAY
 - [x] BPF_MAP_TYPE_LRU_HASH

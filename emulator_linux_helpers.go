@@ -100,26 +100,12 @@ func linuxHelperMapLookupElem(p *Process) error {
 		return err
 	}
 
-	// Deref the key to get the actual key value
-	key := uint32(p.Registers.R2)
-	keyMem, off, found := p.VM.MemoryController.GetEntry(key)
-	if !found {
-		return fmt.Errorf("key unknown to memory controller: 0x%x", key)
-	}
-
-	vmMem, ok := keyMem.Object.(VMMem)
-	if !ok {
-		return fmt.Errorf("key points to non-vm memory: 0x%x", key)
-	}
-
-	// Read x bytes at the given key pointer, x being the key size indicated by the map spec
-	keyVal := make([]byte, lm.GetSpec().KeySize)
-	err = vmMem.Read(off, keyVal)
+	keyVal, err := derefMapKey(p, p.Registers.R2, lm.GetSpec().KeySize)
 	if err != nil {
-		return fmt.Errorf("deref key ptr: %w", err)
+		return err
 	}
 
-	valPtr, err := lm.Lookup(keyVal)
+	valPtr, err := lm.Lookup(keyVal, p.CPUID())
 	if err != nil {
 		var sysErr syscall.Errno
 		if !errors.As(err, &sysErr) {
@@ -171,7 +157,7 @@ func linuxHelperMapUpdateElem(p *Process) error {
 		return fmt.Errorf("deref value ptr: %w", err)
 	}
 
-	err = lmu.Update(keyVal, valVal, uint32(p.Registers.R4))
+	err = lmu.Update(keyVal, valVal, uint32(p.Registers.R4), p.CPUID())
 	if err != nil {
 		var sysErr syscall.Errno
 		if !errors.As(err, &sysErr) {
@@ -250,7 +236,7 @@ func linuxHelperTailcall(p *Process) error {
 	GetNativeEndianness().PutUint32(key, uint32(p.Registers.R3))
 
 	// Lookup should return a pointer into the prog array values
-	progAddrPtr, err := progArr.Lookup(key)
+	progAddrPtr, err := progArr.Lookup(key, p.CPUID())
 	if err != nil {
 		return fmt.Errorf("lookup: %w", err)
 	}

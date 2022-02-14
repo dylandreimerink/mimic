@@ -71,7 +71,7 @@ func TestLinuxHelperLookup(t *testing.T) {
 	}
 
 	// Set the value in the map
-	err = m.Update(key, value, 0)
+	err = m.Update(key, value, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

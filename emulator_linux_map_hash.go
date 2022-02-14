@@ -121,7 +121,7 @@ func (m *LinuxHashMap) Keys() []byte {
 }
 
 // Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
-func (m *LinuxHashMap) Lookup(key []byte) (uint32, error) {
+func (m *LinuxHashMap) Lookup(key []byte, cpuid int) (uint32, error) {
 	if len(key) != int(m.Spec.KeySize) {
 		return 0, fmt.Errorf("size of given key doesn't match key size in map spec")
 	}
@@ -145,7 +145,7 @@ func (m *LinuxHashMap) Lookup(key []byte) (uint32, error) {
 }
 
 // Update updates an existing value in the map, or add a new value if it didn't exist before.
-func (m *LinuxHashMap) Update(key []byte, value []byte, flags uint32) error {
+func (m *LinuxHashMap) Update(key []byte, value []byte, flags uint32, cpuid int) error {
 	if len(key) != int(m.Spec.KeySize) {
 		return fmt.Errorf("size of given key doesn't match key size in map spec")
 	}
@@ -271,8 +271,8 @@ func (m *LinuxLRUHashMap) Keys() []byte {
 }
 
 // Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
-func (m *LinuxLRUHashMap) Lookup(key []byte) (uint32, error) {
-	valPtr, err := m.hashMap.Lookup(key)
+func (m *LinuxLRUHashMap) Lookup(key []byte, cpuid int) (uint32, error) {
+	valPtr, err := m.hashMap.Lookup(key, cpuid)
 	if valPtr == 0 || err != nil {
 		return valPtr, err
 	}
@@ -293,8 +293,8 @@ func (m *LinuxLRUHashMap) Lookup(key []byte) (uint32, error) {
 }
 
 // Update updates an existing value in the map, or add a new value if it didn't exist before.
-func (m *LinuxLRUHashMap) Update(key []byte, value []byte, flags uint32) error {
-	err := m.hashMap.Update(key, value, flags)
+func (m *LinuxLRUHashMap) Update(key []byte, value []byte, flags uint32, cpuid int) error {
+	err := m.hashMap.Update(key, value, flags, cpuid)
 	if err != nil {
 		// If an unknown error, don't do anything
 		if err != syscall.E2BIG {
@@ -317,7 +317,7 @@ func (m *LinuxLRUHashMap) Update(key []byte, value []byte, flags uint32) error {
 			return fmt.Errorf("evict error: %w", err)
 		}
 
-		err = m.hashMap.Update(keyVal, value, flags)
+		err = m.hashMap.Update(keyVal, value, flags, cpuid)
 		if err != nil {
 			return fmt.Errorf("second update error: %w", err)
 		}

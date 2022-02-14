@@ -32,6 +32,13 @@ func VMOptEmulator(e Emulator) VMOpt {
 	}
 }
 
+// VMOptSetvCPUs explicitly sets the amount of virtual CPUs of the VM
+func VMOptSetvCPUs(vCPUs int) VMOpt {
+	return func(v *VMSettings) {
+		v.VirtualCPUs = vCPUs
+	}
+}
+
 // VM is the eBPF virtual machine
 type VM struct {
 	programsMu sync.RWMutex

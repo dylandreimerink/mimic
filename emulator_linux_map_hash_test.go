@@ -41,23 +41,23 @@ func TestEmulatedHashMapLRU(t *testing.T) {
 	v16 := []byte{0, 0, 0, 16}
 
 	// Add 5 values, filling the map
-	err = m.Update(k1, v11, 0)
+	err = m.Update(k1, v11, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = m.Update(k2, v12, 0)
+	err = m.Update(k2, v12, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = m.Update(k3, v13, 0)
+	err = m.Update(k3, v13, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = m.Update(k4, v14, 0)
+	err = m.Update(k4, v14, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = m.Update(k5, v15, 0)
+	err = m.Update(k5, v15, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,17 +65,17 @@ func TestEmulatedHashMapLRU(t *testing.T) {
 	// Key 1 was added first, so it is least recently used.
 
 	// Lookup 1 and 2, no 3 should be least recently used
-	_, err = m.Lookup(k1)
+	_, err = m.Lookup(k1, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = m.Lookup(k2)
+	_, err = m.Lookup(k2, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Insert a sixth element, which should overwrite 3
-	err = m.Update(k6, v16, 0)
+	err = m.Update(k6, v16, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

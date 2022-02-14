@@ -1,6 +1,7 @@
 package mimic
 
 import (
+	"errors"
 	"fmt"
 	"syscall"
 
@@ -58,7 +59,7 @@ func (m *LinuxArrayMap) Keys() []byte {
 }
 
 // Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
-func (m *LinuxArrayMap) Lookup(key []byte) (uint32, error) {
+func (m *LinuxArrayMap) Lookup(key []byte, cpuid int) (uint32, error) {
 	if len(key) != 4 {
 		return 0, fmt.Errorf("invalid key length, must be 4 bytes for array maps")
 	}
@@ -77,7 +78,7 @@ func (m *LinuxArrayMap) Lookup(key []byte) (uint32, error) {
 }
 
 // Update updates an existing value in the map, or add a new value if it didn't exist before.
-func (m *LinuxArrayMap) Update(key []byte, value []byte, flags uint32) error {
+func (m *LinuxArrayMap) Update(key []byte, value []byte, flags uint32, cpuid int) error {
 	if len(key) != 4 {
 		return fmt.Errorf("invalid key length, must be 4 bytes for array maps")
 	}
@@ -136,12 +137,12 @@ func (m *LinuxProgArrayMap) Keys() []byte {
 }
 
 // Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
-func (m *LinuxProgArrayMap) Lookup(key []byte) (uint32, error) {
-	return m.arrayMap.Lookup(key)
+func (m *LinuxProgArrayMap) Lookup(key []byte, cpuid int) (uint32, error) {
+	return m.arrayMap.Lookup(key, cpuid)
 }
 
 // Update updates an existing value in the map, or add a new value if it didn't exist before.
-func (m *LinuxProgArrayMap) Update(key []byte, value []byte, flags uint32) error {
+func (m *LinuxProgArrayMap) Update(key []byte, value []byte, flags uint32, cpuid int) error {
 	if len(value) != int(m.Spec.ValueSize) {
 		return fmt.Errorf("invalid value length, must be 4 bytes for prog array maps")
 	}
@@ -156,7 +157,7 @@ func (m *LinuxProgArrayMap) Update(key []byte, value []byte, flags uint32) error
 		return fmt.Errorf("value is not a pointer to a program")
 	}
 
-	return m.arrayMap.Update(key, value, flags)
+	return m.arrayMap.Update(key, value, flags, cpuid)
 }
 
 // UpdateMap is similar to Update, accept it take a LinuxMap directly, so users don't have to manually lookup the
@@ -170,5 +171,77 @@ func (m *LinuxProgArrayMap) UpdateMap(key []byte, value LinuxMap, flags uint32) 
 	val := make([]byte, 4)
 	GetNativeEndianness().PutUint32(val, entry.Addr)
 
-	return m.arrayMap.Update(key, val, flags)
+	return m.arrayMap.Update(key, val, flags, 0)
+}
+
+// LinuxPerCPUArrayMap is the emulated version of ebpf.PerCPUArray / BPF_MAP_TYPE_PROG_ARRAY.
+// Array maps have 4 byte integer keys from 0 to Spec.MaxEntries, it value is the address of a map.
+type LinuxPerCPUArrayMap struct {
+	Spec *ebpf.MapSpec
+
+	emulator  *LinuxEmulator
+	arrayMaps []LinuxArrayMap
+}
+
+// Init initializes the map, part of the LinuxMap implementation
+func (m *LinuxPerCPUArrayMap) Init(emulator *LinuxEmulator) error {
+	if len(m.arrayMaps) > 0 {
+		return fmt.Errorf("map is already loaded")
+	}
+
+	// The the map itself to the memory controller
+	_, err := emulator.vm.MemoryController.AddEntry(m, 8, m.Spec.Name)
+	if err != nil {
+		return fmt.Errorf("add map to memory controller: %w", err)
+	}
+
+	m.emulator = emulator
+	for i := 0; i < emulator.vm.settings.VirtualCPUs; i++ {
+		// Rename the sub-array-maps so we can see which belongs to which cpu while debugging
+		spec := m.Spec.Copy()
+		spec.Name = fmt.Sprintf("%s-cpu%d", spec.Name, i)
+
+		arrayMap := LinuxArrayMap{
+			Spec: m.Spec,
+		}
+
+		err = arrayMap.Init(emulator)
+		if err != nil {
+			return err
+		}
+
+		m.arrayMaps = append(m.arrayMaps, arrayMap)
+	}
+
+	return err
+}
+
+// GetSpec returns the specification of the map, part of the LinuxMap implementation
+func (m *LinuxPerCPUArrayMap) GetSpec() ebpf.MapSpec {
+	return *m.Spec
+}
+
+// Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
+// the proper window into the slice based on the size of m.Spec.KeySize.
+func (m *LinuxPerCPUArrayMap) Keys() []byte {
+	// Every map generates the same keys anyway
+	return m.arrayMaps[0].Keys()
+}
+
+// Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
+func (m *LinuxPerCPUArrayMap) Lookup(key []byte, cpuid int) (uint32, error) {
+	if cpuid < 0 || cpuid >= len(m.arrayMaps) {
+		return 0, errors.New("invalid cpuid")
+	}
+
+	return m.arrayMaps[cpuid].Lookup(key, cpuid)
+}
+
+// Update updates an existing value in the map, or add a new value if it didn't exist before.
+func (m *LinuxPerCPUArrayMap) Update(key []byte, value []byte, flags uint32, cpuid int) error {
+	if cpuid < 0 || cpuid >= len(m.arrayMaps) {
+		return errors.New("invalid cpuid")
+	}
+
+	return m.arrayMaps[cpuid].Update(key, value, flags, cpuid)
 }
