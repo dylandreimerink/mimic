@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sync"
 
 	"github.com/cilium/ebpf"
@@ -12,9 +13,13 @@ import (
 
 // VMSettings are the actual settings of the VM, VMOpt's can change an instance of these settings.
 type VMSettings struct {
-	Emulator        Emulator
-	StackFrameSize  int
+	Emulator Emulator
+	// Size of the stack in bytes
+	StackFrameSize int
+	// Number of stack frames (max call depth of BPF-to-BPF calls)
 	StackFrameCount int
+	// Number of vCPU's, processes can't have a CPUID higher or equal to this number
+	VirtualCPUs int
 }
 
 // VMOpt is a option which can be used during the creation of a VM with the NewVM function
@@ -34,7 +39,8 @@ type VM struct {
 
 	MemoryController MemoryController
 
-	settings VMSettings
+	settings    VMSettings
+	processPool processPool
 }
 
 // NewVM create a new eBPF virtual machine from the given options.
@@ -47,8 +53,11 @@ func NewVM(opts ...VMOpt) *VM {
 			StackFrameSize: 256,
 			// Default to the stack frame count used in linux
 			StackFrameCount: 8,
+			// Default to the number of CPUs of the host
+			VirtualCPUs: runtime.NumCPU(),
 		},
 	}
+	vm.processPool.vm = vm
 	for _, opt := range opts {
 		opt(&vm.settings)
 	}
@@ -57,6 +66,11 @@ func NewVM(opts ...VMOpt) *VM {
 	vm.settings.Emulator.SetVM(vm)
 
 	return vm
+}
+
+// GetProcessPool returns the process pool of the VM
+func (vm *VM) GetProcessPool() ProcessPool {
+	return &vm.processPool
 }
 
 // GetPrograms returns the loaded program specs
@@ -201,7 +215,7 @@ func (vm *VM) NewProcess(entrypoint int, ctx Context) (*Process, error) {
 		Program:        vm.programs[entrypoint],
 		Context:        ctx,
 		EmulatorValues: make(map[interface{}]interface{}),
-		CPUID:          -1,
+		cpuID:          -1,
 		// Registers will start with zero values
 	}
 
@@ -241,12 +255,35 @@ type Process struct {
 	// The ID of the CPU on which the process is currently running, which might change during the course of its life
 	// time depending on how the Host schedules the process. This number can, but doesn't have to reflect the actual
 	// logical CPU of the host. It is initially -1 until set, negative values should be considered invalid.
-	CPUID int
+	cpuID int
 
 	// A slice of saved registers, each time we make a BPF-to-BPF function call, we have to save PC and R6-R9.
 	calleeSavedRegister []Registers
 
 	exited bool
+}
+
+// CPUID returns the current CPU ID of the process
+func (p *Process) CPUID() int {
+	return p.cpuID
+}
+
+// SetCPUID set the CPU ID of the process
+func (p *Process) SetCPUID(id int) error {
+	if id < 0 {
+		return errors.New("not a valid CPU ID")
+	}
+
+	if id > p.VM.settings.VirtualCPUs {
+		return fmt.Errorf(
+			"vm only has %d vCPUs, max CPU ID is %d",
+			p.VM.settings.VirtualCPUs,
+			p.VM.settings.VirtualCPUs-1,
+		)
+	}
+
+	p.cpuID = id
+	return nil
 }
 
 var errInvalidProgramCount = errors.New("program counter points to non-existent instruction, bad jump of missing " +
@@ -427,13 +464,20 @@ func (r *Registers) Set(asmReg asm.Register, value uint64) error {
 }
 
 // ProcessPool is a worker pool for processes. Once Start'ed processes can be submitted which will be ran on the workers
-// each worker has its own virtual CPU ID, thus emulating an actual CPU. The ProcessPool guarantees that no two
+// each worker has its own virtual CPU ID, thus emulating an actual CPU. The processPool guarantees that no two
 // processes will run with the same CPU ID, making programs which rely on that property to guard against race-conditions
 // save to run. Starting the worker pool with the exact amount of logical CPUs on the host (runtime.NumCPU()) is also
 // the most performant way to run eBPF programs which are non-blocking.
-type ProcessPool struct {
+type ProcessPool interface {
+	Enqueue(job ProcessPoolJob, noblock bool) error
+	Start(backlog int) error
+	Stop()
+}
+
+type processPool struct {
 	jobQueue chan ProcessPoolJob
 	wg       *sync.WaitGroup
+	vm       *VM
 }
 
 // ProcessPoolJob is a job which can be scheduled with the process pool to be executed.
@@ -451,7 +495,7 @@ type ProcessPoolJob struct {
 
 // Enqueue adds the given process to the backlog of the pool, if noblock is false, this call will block until there
 // is room. If noblock is true, an error will be returned if the queue is full.
-func (pp *ProcessPool) Enqueue(job ProcessPoolJob, noblock bool) error {
+func (pp *processPool) Enqueue(job ProcessPoolJob, noblock bool) error {
 	if pp.wg == nil {
 		return fmt.Errorf("pool is not yet running")
 	}
@@ -472,13 +516,9 @@ func (pp *ProcessPool) Enqueue(job ProcessPoolJob, noblock bool) error {
 // Start starts with worker pool, the workerCount is the amount of goroutines/workers to be spawned. The backlog is the
 // amount of pending jobs before Enqueue will start blocking or given errors. The process pool will keep running
 // until Stop is called on the process pool.
-func (pp *ProcessPool) Start(workerCount int, backlog int) error {
+func (pp *processPool) Start(backlog int) error {
 	if pp.wg != nil {
 		return fmt.Errorf("pool is already running")
-	}
-
-	if workerCount < 1 {
-		return fmt.Errorf("worker count must be at least 1")
 	}
 
 	if backlog < 1 {
@@ -488,7 +528,7 @@ func (pp *ProcessPool) Start(workerCount int, backlog int) error {
 	pp.wg = &sync.WaitGroup{}
 	pp.jobQueue = make(chan ProcessPoolJob, backlog)
 
-	for i := 0; i < workerCount; i++ {
+	for i := 0; i < pp.vm.settings.VirtualCPUs; i++ {
 		pp.wg.Add(1)
 		go pp.worker(i)
 	}
@@ -497,13 +537,13 @@ func (pp *ProcessPool) Start(workerCount int, backlog int) error {
 }
 
 // Stop stops the worker pool, all pending jobs will be completed. Stop will block until all goroutines have exited.
-func (pp *ProcessPool) Stop() {
+func (pp *processPool) Stop() {
 	close(pp.jobQueue)
 	pp.wg.Wait()
 	pp.wg = nil
 }
 
-func (pp *ProcessPool) worker(cpuID int) {
+func (pp *processPool) worker(cpuID int) {
 	defer pp.wg.Done()
 
 	for job := range pp.jobQueue {
@@ -513,28 +553,29 @@ func (pp *ProcessPool) worker(cpuID int) {
 
 		// If the context is already done by the time we are getting to the job.
 		if err := job.Context.Err(); err != nil {
-			if job.Handoff != nil {
-				// Start Handoff in separate goroutine so it never block this worker.
-				go job.Handoff(job.Process, err)
-			} else {
-				//nolint // no way to get the error to the user, and we don't want to print things on the terminal.
-				_ = job.Process.Cleanup()
-			}
-
-			return
+			pp.handoff(job, err)
+			continue
 		}
 
 		// We can set it, it will never change.
-		job.Process.CPUID = cpuID
+		err := job.Process.SetCPUID(cpuID)
+		if err != nil {
+			pp.handoff(job, err)
+			continue
+		}
 
 		// Run the process until it is done, or our context closes for whatever reason
-		err := job.Process.Run(job.Context)
-		if job.Handoff != nil {
-			// Start Handoff in separate goroutine so it never block this worker.
-			go job.Handoff(job.Process, err)
-		} else {
-			//nolint // no way to get the error to the user, and we don't want to print things on the terminal.
-			_ = job.Process.Cleanup()
-		}
+		err = job.Process.Run(job.Context)
+		pp.handoff(job, err)
+	}
+}
+
+func (pp *processPool) handoff(job ProcessPoolJob, err error) {
+	if job.Handoff != nil {
+		// Start Handoff in separate goroutine so it never block this worker.
+		go job.Handoff(job.Process, err)
+	} else {
+		//nolint // no way to get the error to the user, and we don't want to print things on the terminal.
+		_ = job.Process.Cleanup()
 	}
 }

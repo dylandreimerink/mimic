@@ -1,6 +1,7 @@
 run:
   skip-dirs:
     - "cmd/test"
+  tests: false
 
 linters-settings:
   errcheck:
