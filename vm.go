@@ -104,26 +104,9 @@ func (vm *VM) AddProgram(prog *ebpf.ProgramSpec) (int, error) {
 	// Rewrite BPF-to-BPF function call offsets, do this last since steps before may add or remove instructions, which
 	// would make the offsets invalid.
 
-	symbolOffsets, err := prog.Instructions.SymbolOffsets()
+	err := fixupJumpsAndCalls(prog.Instructions)
 	if err != nil {
-		return 0, fmt.Errorf("prog instruction symbol offsets: %w", err)
-	}
-
-	for refName, callOffset := range prog.Instructions.ReferenceOffsets() {
-		refOffset, ok := symbolOffsets[refName]
-		if !ok {
-			continue
-		}
-
-		for _, off := range callOffset {
-			inst := prog.Instructions[off]
-			if !inst.IsFunctionCall() {
-				// Ignore other references(maps), those need to be handled by the emulator
-				continue
-			}
-
-			prog.Instructions[off].Constant = int64(refOffset - off)
-		}
+		return -1, fmt.Errorf("Error while fixing up jumps and reference calls: %w", err)
 	}
 
 	// Add the program to the memory controller
@@ -135,6 +118,69 @@ func (vm *VM) AddProgram(prog *ebpf.ProgramSpec) (int, error) {
 	vm.programs = append(vm.programs, prog)
 
 	return len(vm.programs) - 1, nil
+}
+
+// this functions was copied from ebpf.fixupJumpsAndCalls and slightly modified
+func fixupJumpsAndCalls(insns asm.Instructions) error {
+	symbolOffsets := make(map[string]asm.RawInstructionOffset)
+	iter := insns.Iterate()
+	for iter.Next() {
+		ins := iter.Ins
+
+		if ins.Symbol() == "" {
+			continue
+		}
+
+		if _, ok := symbolOffsets[ins.Symbol()]; ok {
+			return fmt.Errorf("duplicate symbol %s", ins.Symbol())
+		}
+
+		symbolOffsets[ins.Symbol()] = iter.Offset
+	}
+
+	iter = insns.Iterate()
+	for iter.Next() {
+		i := iter.Index
+		offset := iter.Offset
+		ins := iter.Ins
+
+		if ins.Reference() == "" {
+			continue
+		}
+
+		symOffset, ok := symbolOffsets[ins.Reference()]
+		switch {
+		case ins.IsFunctionReference() && ins.Constant == -1:
+			if !ok {
+				break
+			}
+
+			ins.Constant = int64(symOffset - offset - 1)
+			continue
+
+		case ins.OpCode.Class().IsJump() && ins.Offset == -1:
+			if !ok {
+				break
+			}
+
+			ins.Offset = int16(symOffset - offset - 1)
+			continue
+
+		default:
+			// no fixup needed
+			continue
+		}
+
+		return fmt.Errorf(
+			"%s at insn %d: symbol %q: %w",
+			ins.OpCode,
+			i,
+			ins.Reference(),
+			errors.New("unsatisfied program reference"),
+		)
+	}
+
+	return nil
 }
 
 // NewProcess spawns a new process, `entrypoint` specifies the entrypoint program and `ctx` the context for the process
@@ -155,6 +201,7 @@ func (vm *VM) NewProcess(entrypoint int, ctx Context) (*Process, error) {
 		Program:        vm.programs[entrypoint],
 		Context:        ctx,
 		EmulatorValues: make(map[interface{}]interface{}),
+		CPUID:          -1,
 		// Registers will start with zero values
 	}
 
@@ -191,6 +238,10 @@ type Process struct {
 	Registers Registers
 	// A values which the the emulator can use to track process specific values
 	EmulatorValues map[interface{}]interface{}
+	// The ID of the CPU on which the process is currently running, which might change during the course of its life
+	// time depending on how the Host schedules the process. This number can, but doesn't have to reflect the actual
+	// logical CPU of the host. It is initially -1 until set, negative values should be considered invalid.
+	CPUID int
 
 	// A slice of saved registers, each time we make a BPF-to-BPF function call, we have to save PC and R6-R9.
 	calleeSavedRegister []Registers
@@ -373,4 +424,117 @@ func (r *Registers) Set(asmReg asm.Register, value uint64) error {
 	}
 
 	return nil
+}
+
+// ProcessPool is a worker pool for processes. Once Start'ed processes can be submitted which will be ran on the workers
+// each worker has its own virtual CPU ID, thus emulating an actual CPU. The ProcessPool guarantees that no two
+// processes will run with the same CPU ID, making programs which rely on that property to guard against race-conditions
+// save to run. Starting the worker pool with the exact amount of logical CPUs on the host (runtime.NumCPU()) is also
+// the most performant way to run eBPF programs which are non-blocking.
+type ProcessPool struct {
+	jobQueue chan ProcessPoolJob
+	wg       *sync.WaitGroup
+}
+
+// ProcessPoolJob is a job which can be scheduled with the process pool to be executed.
+type ProcessPoolJob struct {
+	// The process to be executed
+	Process *Process
+	// The context with which the process is to be ran. Which can be used to cancel a particular process or to set
+	// a deadline to limit its resource usage. Optional, if nil context.Background() is used.
+	Context context.Context
+	// When the process exits or errors, instread of cleaning it up, it will be handed off to this callback which will
+	// be started in its own goroutine. This can be used to process the results, but is also responsible for the process
+	// cleanup. Optional, if nil, the process is cleaned up by the pool.
+	Handoff func(p *Process, err error)
+}
+
+// Enqueue adds the given process to the backlog of the pool, if noblock is false, this call will block until there
+// is room. If noblock is true, an error will be returned if the queue is full.
+func (pp *ProcessPool) Enqueue(job ProcessPoolJob, noblock bool) error {
+	if pp.wg == nil {
+		return fmt.Errorf("pool is not yet running")
+	}
+
+	if noblock {
+		select {
+		case pp.jobQueue <- job:
+			return nil
+		default:
+			return fmt.Errorf("backlog is full")
+		}
+	}
+
+	pp.jobQueue <- job
+	return nil
+}
+
+// Start starts with worker pool, the workerCount is the amount of goroutines/workers to be spawned. The backlog is the
+// amount of pending jobs before Enqueue will start blocking or given errors. The process pool will keep running
+// until Stop is called on the process pool.
+func (pp *ProcessPool) Start(workerCount int, backlog int) error {
+	if pp.wg != nil {
+		return fmt.Errorf("pool is already running")
+	}
+
+	if workerCount < 1 {
+		return fmt.Errorf("worker count must be at least 1")
+	}
+
+	if backlog < 1 {
+		return fmt.Errorf("backlog must be at least 1")
+	}
+
+	pp.wg = &sync.WaitGroup{}
+	pp.jobQueue = make(chan ProcessPoolJob, backlog)
+
+	for i := 0; i < workerCount; i++ {
+		pp.wg.Add(1)
+		go pp.worker(i)
+	}
+
+	return nil
+}
+
+// Stop stops the worker pool, all pending jobs will be completed. Stop will block until all goroutines have exited.
+func (pp *ProcessPool) Stop() {
+	close(pp.jobQueue)
+	pp.wg.Wait()
+	pp.wg = nil
+}
+
+func (pp *ProcessPool) worker(cpuID int) {
+	defer pp.wg.Done()
+
+	for job := range pp.jobQueue {
+		if job.Context == nil {
+			job.Context = context.Background()
+		}
+
+		// If the context is already done by the time we are getting to the job.
+		if err := job.Context.Err(); err != nil {
+			if job.Handoff != nil {
+				// Start Handoff in separate goroutine so it never block this worker.
+				go job.Handoff(job.Process, err)
+			} else {
+				//nolint // no way to get the error to the user, and we don't want to print things on the terminal.
+				_ = job.Process.Cleanup()
+			}
+
+			return
+		}
+
+		// We can set it, it will never change.
+		job.Process.CPUID = cpuID
+
+		// Run the process until it is done, or our context closes for whatever reason
+		err := job.Process.Run(job.Context)
+		if job.Handoff != nil {
+			// Start Handoff in separate goroutine so it never block this worker.
+			go job.Handoff(job.Process, err)
+		} else {
+			//nolint // no way to get the error to the user, and we don't want to print things on the terminal.
+			_ = job.Process.Cleanup()
+		}
+	}
 }

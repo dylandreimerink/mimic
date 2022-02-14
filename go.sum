@@ -1,6 +1,6 @@
-github.com/cilium/ebpf v0.8.0 h1:2V6KSg3FRADVU2BMIRemZ0hV+9OM+aAHhZDjQyjJTAs=
-github.com/cilium/ebpf v0.8.0/go.mod h1:f5zLIM0FSNuAkSyLAN7X+Hy6yznlF1mNiWUMfxMtrgk=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
+github.com/dylandreimerink/ebpf v0.8.1-0.20220213140259-64386bac261c h1:YMSIuwoB/Su/gZqZ2eX0PGe14fH4VdBtH6T1DqFtNt0=
+github.com/dylandreimerink/ebpf v0.8.1-0.20220213140259-64386bac261c/go.mod h1:f5zLIM0FSNuAkSyLAN7X+Hy6yznlF1mNiWUMfxMtrgk=
 github.com/frankban/quicktest v1.14.0 h1:+cqqvzZV87b4adx/5ayVOaYZ2CrvM4ejQvUdBzPPUss=
 github.com/frankban/quicktest v1.14.0/go.mod h1:NeW+ay9A/U67EYXNFA1nPE8e/tnQv/09mUdL/ijj8og=
 github.com/google/go-cmp v0.5.6 h1:BKbKCqvP6I+rmFHt06ZmyQtvB8xAkWdhFyr0ZUNZcxQ=
