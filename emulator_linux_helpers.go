@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"syscall"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
@@ -22,11 +23,16 @@ import (
 type HelperFunction func(p *Process) error
 
 var linuxHelpers = []HelperFunction{
-	0:                   nil, // 0 is not a valid helper function
-	asm.FnMapLookupElem: linuxHelperMapLookupElem,
-	asm.FnMapUpdateElem: linuxHelperMapUpdateElem,
-	asm.FnMapDeleteElem: linuxHelperMapDeleteElem,
-	asm.FnTailCall:      linuxHelperTailcall,
+	0:                       nil, // 0 is not a valid helper function
+	asm.FnMapLookupElem:     linuxHelperMapLookupElem,
+	asm.FnMapUpdateElem:     linuxHelperMapUpdateElem,
+	asm.FnMapDeleteElem:     linuxHelperMapDeleteElem,
+	asm.FnKtimeGetNs:        linuxHelperGetKTimeNs,
+	asm.FnGetPrandomU32:     linuxHelperGetPRandomU32,
+	asm.FnGetSmpProcessorId: linuxHelperGetSmpProcessorID,
+	asm.FnTailCall:          linuxHelperTailcall,
+	asm.FnKtimeGetBootNs:    linuxHelperGetKTimeNs,
+	asm.FnKtimeGetCoarseNs:  linuxHelperGetKTimeNs,
 }
 
 func syscallErr(errNo syscall.Errno) uint64 {
@@ -199,6 +205,26 @@ func linuxHelperMapDeleteElem(p *Process) error {
 	}
 
 	p.Registers.R0 = 0
+	return nil
+}
+
+func linuxHelperGetKTimeNs(p *Process) error {
+	// Note: this helper should subtract time the system was suspended, but we don't do that at the moment.
+	// TODO can we even get access to a suspended-time-counter in userspace? Is this that critical?
+	bootTime := p.VM.settings.Emulator.(*LinuxEmulator).settings.TimeOfBoot
+	p.Registers.R0 = uint64(time.Since(bootTime))
+	return nil
+}
+
+// bpf_get_prandom_u32
+func linuxHelperGetPRandomU32(p *Process) error {
+	p.Registers.R0 = uint64(p.VM.settings.Emulator.(*LinuxEmulator).rng.Uint32())
+	return nil
+}
+
+// bpf_get_smp_processor_id
+func linuxHelperGetSmpProcessorID(p *Process) error {
+	p.Registers.R0 = uint64(p.CPUID())
 	return nil
 }
 

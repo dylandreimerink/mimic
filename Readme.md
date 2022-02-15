@@ -223,54 +223,54 @@ Note: Marked list items were on the list, but have since been implemented.
 - [X] bpf_update_element
 - [X] bpf_delete_element
 - [ ] bpf_probe_read
-- [ ] bpf_ktime_get_ns
+- [x] bpf_ktime_get_ns
 - [ ] bpf_trace_printk
-- [ ] bpf_get_prandom_u32
-- [ ] bpf_get_smp_processor_id
-- [ ] bpf_skb_store_bytes
-- [ ] bpf_l3_csum_replace
-- [ ] bpf_l4_csum_replace
+- [x] bpf_get_prandom_u32
+- [x] bpf_get_smp_processor_id
+- [ ] bpf_skb_store_bytes (sk_buff)
+- [ ] bpf_l3_csum_replace (sk_buff)
+- [ ] bpf_l4_csum_replace (sk_buff)
 - [X] bpf_tail_call
-- [ ] bpf_clone_redirect
+- [ ] bpf_clone_redirect (sk_buff)
 - [ ] bpf_get_current_pid_tgid
 - [ ] bpf_get_current_uid_gid
 - [ ] bpf_get_current_comm
-- [ ] bpf_get_cgroup_classid
-- [ ] bpf_skb_vlan_push
-- [ ] bpf_skb_vlan_pop
-- [ ] bpf_skb_get_tunnel_key
-- [ ] bpf_skb_set_tunnel_key
+- [ ] bpf_get_cgroup_classid (sk_buff)
+- [ ] bpf_skb_vlan_push (sk_buff)
+- [ ] bpf_skb_vlan_pop (sk_buff)
+- [ ] bpf_skb_get_tunnel_key (sk_buff)
+- [ ] bpf_skb_set_tunnel_key (sk_buff)
 - [ ] bpf_perf_event_read
 - [ ] bpf_redirect
-- [ ] bpf_get_route_realm
+- [ ] bpf_get_route_realm (sk_buff)
 - [ ] bpf_perf_event_output
 - [ ] bpf_skb_load_bytes
 - [ ] bpf_get_stackid
 - [ ] bpf_csum_diff
-- [ ] bpf_skb_get_tunnel_opt
-- [ ] bpf_skb_set_tunnel_opt
-- [ ] bpf_skb_change_proto
-- [ ] bpf_skb_change_type
-- [ ] bpf_skb_under_cgroup
-- [ ] bpf_get_hash_recalc
+- [ ] bpf_skb_get_tunnel_opt (sk_buff)
+- [ ] bpf_skb_set_tunnel_opt (sk_buff)
+- [ ] bpf_skb_change_proto (sk_buff)
+- [ ] bpf_skb_change_type (sk_buff)
+- [ ] bpf_skb_under_cgroup (sk_buff)
+- [ ] bpf_get_hash_recalc (sk_buff)
 - [ ] bpf_get_current_task
 - [ ] bpf_probe_write_user
 - [ ] bpf_current_task_under_cgroup
-- [ ] bpf_skb_change_tail
-- [ ] bpf_skb_pull_data
-- [ ] bpf_csum_update
-- [ ] bpf_set_hash_invalid
+- [ ] bpf_skb_change_tail (sk_buff)
+- [ ] bpf_skb_pull_data (sk_buff)
+- [ ] bpf_csum_update (sk_buff)
+- [ ] bpf_set_hash_invalid (sk_buff)
 - [ ] bpf_get_numa_node_id
-- [ ] bpf_skb_change_head
+- [ ] bpf_skb_change_head (sk_buff)
 - [ ] bpf_xdp_adjust_head
 - [ ] bpf_probe_read_str
-- [ ] bpf_get_socket_cookie
-- [ ] bpf_get_socket_uid
-- [ ] bpf_set_hash
-- [ ] bpf_setsockopt
-- [ ] bpf_skb_adjust_room
-- [ ] bpf_redirect_map
-- [ ] bpf_sk_redirect_map
+- [ ] bpf_get_socket_cookie (sk_buff)
+- [ ] bpf_get_socket_uid (sk_buff)
+- [ ] bpf_set_hash (sk_buff)
+- [ ] bpf_setsockopt (sk_buff)
+- [ ] bpf_skb_adjust_room (sk_buff)
+- [ ] bpf_redirect_map (sk_buff)
+- [ ] bpf_sk_redirect_map (sk_buff)
 - [ ] bpf_sock_map_update
 - [ ] bpf_xdp_adjust_meta
 - [ ] bpf_perf_event_read_value
@@ -284,24 +284,24 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_msg_pull_data
 - [ ] bpf_bind
 - [ ] bpf_xdp_adjust_tail
-- [ ] bpf_skb_get_xfrm_state
+- [ ] bpf_skb_get_xfrm_state (sk_buff)
 - [ ] bpf_get_stack
 - [ ] bpf_skb_load_bytes_relative
 - [ ] bpf_fib_lookup
 - [ ] bpf_sock_hash_update
 - [ ] bpf_msg_redirect_hash
-- [ ] bpf_sk_redirect_hash
-- [ ] bpf_lwt_push_encap
-- [ ] bpf_lwt_seg6_store_bytes
-- [ ] bpf_lwt_seg6_adjust_srh
-- [ ] bpf_lwt_seg6_action
+- [ ] bpf_sk_redirect_hash (sk_buff)
+- [ ] bpf_lwt_push_encap (sk_buff)
+- [ ] bpf_lwt_seg6_store_bytes (sk_buff)
+- [ ] bpf_lwt_seg6_adjust_srh (sk_buff)
+- [ ] bpf_lwt_seg6_action (sk_buff)
 - [ ] bpf_rc_repeat
 - [ ] bpf_rc_keydown
-- [ ] bpf_skb_cgroup_id
+- [ ] bpf_skb_cgroup_id (sk_buff)
 - [ ] bpf_get_current_cgroup_id
 - [ ] bpf_get_local_storage
 - [ ] bpf_sk_select_reuseport
-- [ ] bpf_skb_ancestor_cgroup_id
+- [ ] bpf_skb_ancestor_cgroup_id (sk_buff)
 - [ ] bpf_sk_lookup_tcp
 - [ ] bpf_sk_lookup_udp
 - [ ] bpf_sk_release
@@ -315,7 +315,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_spin_unlock
 - [ ] bpf_sk_fullsock
 - [ ] bpf_tcp_sock
-- [ ] bpf_skb_ecn_set_ce
+- [ ] bpf_skb_ecn_set_ce (sk_buff)
 - [ ] bpf_get_listener_sock
 - [ ] bpf_skc_lookup_tcp
 - [ ] bpf_tcp_check_syncookie
@@ -343,7 +343,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_get_netns_cookie
 - [ ] bpf_get_current_ancestor_cgroup_id
 - [ ] bpf_sk_assign
-- [ ] bpf_ktime_get_boot_ns
+- [x] bpf_ktime_get_boot_ns
 - [ ] bpf_seq_printf
 - [ ] bpf_seq_write
 - [ ] bpf_sk_cgroup_id
@@ -353,7 +353,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_ringbuf_submit
 - [ ] bpf_ringbuf_discard
 - [ ] bpf_ringbuf_query
-- [ ] bpf_csum_level
+- [ ] bpf_csum_level (sk_buff)
 - [ ] bpf_skc_to_tcp6_sock
 - [ ] bpf_skc_to_tcp_sock
 - [ ] bpf_skc_to_tcp_timewait_sock
@@ -369,7 +369,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_copy_from_user
 - [ ] bpf_snprintf_btf
 - [ ] bpf_seq_printf_btf
-- [ ] bpf_skb_cgroup_classid
+- [ ] bpf_skb_cgroup_classid (sk_buff)
 - [ ] bpf_redirect_neigh
 - [ ] bpf_per_cpu_ptr
 - [ ] bpf_this_cpu_ptr
@@ -378,7 +378,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_task_storage_delete
 - [ ] bpf_get_current_task_btf
 - [ ] bpf_bprm_opts_set
-- [ ] bpf_ktime_get_coarse_ns
+- [x] bpf_ktime_get_coarse_ns
 - [ ] bpf_ima_inode_hash
 - [ ] bpf_sock_from_file
 - [ ] bpf_check_mtu

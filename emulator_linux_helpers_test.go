@@ -2,6 +2,7 @@ package mimic
 
 import (
 	"testing"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
@@ -112,3 +113,108 @@ func TestLinuxHelperLookup(t *testing.T) {
 }
 
 // TODO make test for double map pointer lookup
+
+func TestLinuxHelperKtimeNS(t *testing.T) {
+	vm, _ := testEnv()
+
+	// Make program, since we can't start a process without it
+	progID, err := vm.AddProgram(&ebpf.ProgramSpec{
+		Name: "pseudo",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get a process which we need as arg to the helper
+	p, err := vm.NewProcess(progID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	linuxHelperGetKTimeNs(p)
+	t1 := p.Registers.R0
+
+	time.Sleep(100 * time.Millisecond)
+
+	linuxHelperGetKTimeNs(p)
+	t2 := p.Registers.R0
+
+	if time.Duration(t2-t1) <= 100*time.Millisecond {
+		t.Fatalf("t2-t1 = %s <= 100ms", time.Duration(t2-t1))
+	}
+}
+
+func TestLinuxHelperGetPRandom(t *testing.T) {
+	// Set the seed so we get repeatable test results
+	emu := NewLinuxEmulator(OptRngSeed(123))
+	vm := NewVM(VMOptEmulator(emu))
+
+	// Make program, since we can't start a process without it
+	progID, err := vm.AddProgram(&ebpf.ProgramSpec{
+		Name: "pseudo",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get a process which we need as arg to the helper
+	p, err := vm.NewProcess(progID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Note this is dependant on the RNG not changing, if it ever does, confirm that the 3 spit out numbers seem
+	// random and update the values.
+
+	linuxHelperGetPRandomU32(p)
+	if p.Registers.R0 != 2496738071 {
+		t.Fatalf("got %d, expected %d", p.Registers.R0, 2496738071)
+	}
+
+	linuxHelperGetPRandomU32(p)
+	if p.Registers.R0 != 112632499 {
+		t.Fatalf("got %d, expected %d", p.Registers.R0, 112632499)
+	}
+
+	linuxHelperGetPRandomU32(p)
+	if p.Registers.R0 != 1073610806 {
+		t.Fatalf("got %d, expected %d", p.Registers.R0, 1073610806)
+	}
+}
+
+func TestLinuxHelperGetSmpProcessorID(t *testing.T) {
+	// We need at least 2 vCPUs for this test
+	emu := NewLinuxEmulator()
+	vm := NewVM(VMOptEmulator(emu), VMOptSetvCPUs(2))
+
+	// Make program, since we can't start a process without it
+	progID, err := vm.AddProgram(&ebpf.ProgramSpec{
+		Name: "pseudo",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get a process which we need as arg to the helper
+	p, err := vm.NewProcess(progID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Note this is dependant on the RNG not changing, if it ever does, confirm that the 3 spit out numbers seem
+	// random and update the values.
+
+	p.SetCPUID(0)
+
+	linuxHelperGetSmpProcessorID(p)
+	if p.Registers.R0 != 0 {
+		t.Fatalf("got %d, expected %d", p.Registers.R0, 0)
+	}
+
+	p.SetCPUID(1)
+
+	linuxHelperGetSmpProcessorID(p)
+	if p.Registers.R0 != 1 {
+		t.Fatalf("got %d, expected %d", p.Registers.R0, 1)
+	}
+}

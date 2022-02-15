@@ -39,6 +39,7 @@ linters-settings:
     include-go-root: false
     packages:
       - github.com/cilium/ebpf
+      - golang.org/x/sys
 
 linters:
   # please, do not use `enable-all`: it's deprecated and will be removed soon.

@@ -1,7 +1,10 @@
 package mimic
 
 import (
+	cryptoRand "crypto/rand"
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
@@ -12,6 +15,15 @@ type LinuxEmulatorSettings struct {
 	// The maximum amount of tailcalls a process can make, a security feature in the Linux kernel to avoid
 	// infinite tailcall loops.
 	MaxTailCalls int
+
+	// The seed used by the pseudo random number generator for the bpf_get_prandom_u32 function.
+	// Is set to the current nanoseconds since system boot, but can be set to a custom value to make the the emulator
+	// predictable.
+	RandomSeed int64
+
+	// The boot time of the emulator, is the boot time of the host by default, can be set so behavior is predictable.
+	// Value is used to calculate time since boot for bpf_ktime_get_ns helper function.
+	TimeOfBoot time.Time
 }
 
 // LinuxEmulatorOpts are options which can be passed to NewLinuxEmulator to modify the default settings.
@@ -24,11 +36,21 @@ func OptMaxTailCalls(max int) LinuxEmulatorOpts {
 	}
 }
 
+// OptRngSeed sets the seed for the random number generator used for bpf_get_prandom_u32.
+func OptRngSeed(seed int64) LinuxEmulatorOpts {
+	return func(settings *LinuxEmulatorSettings) {
+		settings.RandomSeed = seed
+	}
+}
+
 var _ Emulator = (*LinuxEmulator)(nil)
 
 // LinuxEmulator implements Emulator, and attempts to emulate all Linux specific eBPF features.
 type LinuxEmulator struct {
 	Maps map[string]LinuxMap
+
+	// Random number generator, used by the bpf_get_prandom_u32 helper
+	rng *rand.Rand
 
 	settings LinuxEmulatorSettings
 	vm       *VM
@@ -36,16 +58,29 @@ type LinuxEmulator struct {
 
 // NewLinuxEmulator create a new LinuxEmulator from the given options.
 func NewLinuxEmulator(opts ...LinuxEmulatorOpts) *LinuxEmulator {
+	// By default, get a random seed
+	seed := make([]byte, 8)
+	_, err := cryptoRand.Read(seed)
+	if err != nil {
+		seed = []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	}
+
 	emu := &LinuxEmulator{
 		Maps: make(map[string]LinuxMap),
 		settings: LinuxEmulatorSettings{
 			MaxTailCalls: 33, // The default max in Linux
+			RandomSeed:   int64(GetNativeEndianness().Uint64(seed)),
+			TimeOfBoot:   timeOfBoot(),
 		},
 	}
 
 	for _, opt := range opts {
 		opt(&emu.settings)
 	}
+
+	// Seed our random number generator with the default or updated seed
+	//nolint // We know this is not secure, don't matter in this case
+	emu.rng = rand.New(rand.NewSource(emu.settings.RandomSeed))
 
 	return emu
 }
