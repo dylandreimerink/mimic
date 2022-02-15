@@ -76,3 +76,7 @@ issues:
     - text: "fieldalignment:"
       linters:
         - govet
+    # typecheck doesn't understand build constraints
+    - path: "util_*.go"
+      linters:
+        - typecheck
