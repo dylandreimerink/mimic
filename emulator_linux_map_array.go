@@ -13,14 +13,16 @@ import (
 type LinuxArrayMap struct {
 	Spec *ebpf.MapSpec
 
-	backing *PlainMemory
-	addr    uint32
+	emulator *LinuxEmulator
+	backing  *PlainMemory
+	addr     uint32
 }
 
 // Init initializes the map, part of the LinuxMap implementation
 func (m *LinuxArrayMap) Init(emulator *LinuxEmulator) error {
 	size := m.Spec.MaxEntries * m.Spec.ValueSize
 
+	m.emulator = emulator
 	m.backing = &PlainMemory{
 		Backing: make([]byte, size),
 	}
@@ -96,85 +98,26 @@ func (m *LinuxArrayMap) Update(key []byte, value []byte, flags uint32, cpuid int
 	return m.backing.Write(keyVal*m.Spec.ValueSize, value)
 }
 
-// LinuxProgArrayMap is the emulated version of ebpf.ProgramArray / BPF_MAP_TYPE_PROG_ARRAY.
-// Array maps have 4 byte integer keys from 0 to Spec.MaxEntries, it value is the address of a map.
-type LinuxProgArrayMap struct {
-	Spec *ebpf.MapSpec
-
-	emulator *LinuxEmulator
-	arrayMap *LinuxArrayMap
-}
-
-// Init initializes the map, part of the LinuxMap implementation
-func (m *LinuxProgArrayMap) Init(emulator *LinuxEmulator) error {
-	if m.arrayMap != nil {
-		return fmt.Errorf("map is already loaded")
+// UpdateObject is similar to Update, accept it take a arbitrary go interface{} as value. The virtual address of the
+// object will be stored in the map. The map must have a value size of 4 bytes and the object must already be registered
+// with the VMs memory controller.
+func (m *LinuxArrayMap) UpdateObject(key []byte, value LinuxMap, flags uint32) error {
+	if m.Spec.ValueSize != 4 {
+		return fmt.Errorf("this map doesn't contain addresses(has a value size != 4 bytes)")
 	}
 
-	// The the map itself to the memory controller
-	_, err := emulator.vm.MemoryController.AddEntry(m, 8, m.Spec.Name)
-	if err != nil {
-		return fmt.Errorf("add map to memory controller: %w", err)
-	}
-
-	m.emulator = emulator
-	m.arrayMap = &LinuxArrayMap{
-		Spec: m.Spec,
-	}
-
-	return m.arrayMap.Init(emulator)
-}
-
-// GetSpec returns the specification of the map, part of the LinuxMap implementation
-func (m *LinuxProgArrayMap) GetSpec() ebpf.MapSpec {
-	return *m.arrayMap.Spec
-}
-
-// Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
-// the proper window into the slice based on the size of m.Spec.KeySize.
-func (m *LinuxProgArrayMap) Keys() []byte {
-	return m.arrayMap.Keys()
-}
-
-// Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
-func (m *LinuxProgArrayMap) Lookup(key []byte, cpuid int) (uint32, error) {
-	return m.arrayMap.Lookup(key, cpuid)
-}
-
-// Update updates an existing value in the map, or add a new value if it didn't exist before.
-func (m *LinuxProgArrayMap) Update(key []byte, value []byte, flags uint32, cpuid int) error {
-	if len(value) != int(m.Spec.ValueSize) {
-		return fmt.Errorf("invalid value length, must be 4 bytes for prog array maps")
-	}
-
-	valVal := GetNativeEndianness().Uint32(value)
-
-	entry, _, found := m.emulator.vm.MemoryController.GetEntry(valVal)
-	if !found {
-		return fmt.Errorf("value is not a pointer to a program")
-	}
-	if _, ok := entry.Object.(*ebpf.ProgramSpec); !ok {
-		return fmt.Errorf("value is not a pointer to a program")
-	}
-
-	return m.arrayMap.Update(key, value, flags, cpuid)
-}
-
-// UpdateMap is similar to Update, accept it take a LinuxMap directly, so users don't have to manually lookup the
-// address of the map.
-func (m *LinuxProgArrayMap) UpdateMap(key []byte, value LinuxMap, flags uint32) error {
 	entry, found := m.emulator.vm.MemoryController.GetEntryByObject(value)
 	if !found {
-		return fmt.Errorf("the given map is not registered with the memory controller")
+		return fmt.Errorf("the given value is not registered with the memory controller")
 	}
 
 	val := make([]byte, 4)
 	GetNativeEndianness().PutUint32(val, entry.Addr)
 
-	return m.arrayMap.Update(key, val, flags, 0)
+	return m.Update(key, val, flags, 0)
 }
 
-// LinuxPerCPUArrayMap is the emulated version of ebpf.PerCPUArray / BPF_MAP_TYPE_PROG_ARRAY.
+// LinuxPerCPUArrayMap is the emulated version of ebpf.PerCPUArray / BPF_MAP_TYPE_PERCPU_ARRAY.
 // Array maps have 4 byte integer keys from 0 to Spec.MaxEntries, it value is the address of a map.
 type LinuxPerCPUArrayMap struct {
 	Spec *ebpf.MapSpec

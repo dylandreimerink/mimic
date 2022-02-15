@@ -41,9 +41,12 @@ type LinuxMapDeleter interface {
 // MapSpecToLinuxMap translates a map specification to a LinuxMap type which can be used in the LinuxEmulator.
 func MapSpecToLinuxMap(spec *ebpf.MapSpec) (LinuxMap, error) {
 	switch spec.Type {
-	case ebpf.Array, ebpf.ArrayOfMaps:
-		// Note: ArrayOfMaps isn't its own type since the normal array type support storage of pointers to maps
-		//       the emulator doesn't need to enforce valid values.
+	case ebpf.Array, ebpf.ProgramArray, ebpf.ArrayOfMaps, ebpf.DevMap, ebpf.SockMap, ebpf.CPUMap, ebpf.XSKMap,
+		ebpf.CGroupArray, ebpf.ReusePortSockArray:
+
+		// All of these types are compatible with the generic emulated array map, the major difference for most of them
+		// is the object type of the pointer stored in them, which the emulator still knows because of the map Spec.
+
 		return &LinuxArrayMap{
 			Spec: spec,
 		}, nil
@@ -53,16 +56,18 @@ func MapSpecToLinuxMap(spec *ebpf.MapSpec) (LinuxMap, error) {
 			Spec: spec,
 		}, nil
 
-	case ebpf.ProgramArray:
-		return &LinuxProgArrayMap{
+	case ebpf.Hash, ebpf.HashOfMaps, ebpf.SockHash, ebpf.CGroupStorage, ebpf.SkStorage, ebpf.DevMapHash,
+		ebpf.StructOpsMap, ebpf.InodeStorage, ebpf.TaskStorage:
+
+		// All of these types are compatible with the generic emulated hash map, the major difference for most of them
+		// is the object type of the pointer stored in them, which the emulator still knows because of the map Spec.
+
+		return &LinuxHashMap{
 			Spec: spec,
 		}, nil
 
-	case ebpf.Hash, ebpf.PerCPUHash, ebpf.HashOfMaps:
-		// Note: HashOfMaps isn't its own type since the normal hash map type support storage of pointers to maps
-		//       the emulator doesn't need to enforce valid values.
-		// TODO implement per-CPU hash map
-		return &LinuxHashMap{
+	case ebpf.PerCPUHash, ebpf.PerCPUCGroupStorage:
+		return &LinuxPerCPUHashMap{
 			Spec: spec,
 		}, nil
 

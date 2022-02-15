@@ -226,7 +226,12 @@ func linuxHelperTailcall(p *Process) error {
 	if err != nil {
 		return err
 	}
-	progArr, ok := lm.(*LinuxProgArrayMap)
+
+	if lm.GetSpec().Type != ebpf.ProgramArray || lm.GetSpec().KeySize != 4 {
+		return fmt.Errorf("R1 is not a program array map")
+	}
+
+	progArr, ok := lm.(*LinuxArrayMap)
 	if !ok {
 		return fmt.Errorf("R1 is not a program array map")
 	}
