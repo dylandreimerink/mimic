@@ -124,7 +124,6 @@ func (vm *VM) AddProgram(prog *ebpf.ProgramSpec) (int, error) {
 
 	// Rewrite BPF-to-BPF function call offsets, do this last since steps before may add or remove instructions, which
 	// would make the offsets invalid.
-
 	err := fixupJumpsAndCalls(prog.Instructions)
 	if err != nil {
 		return -1, fmt.Errorf("Error while fixing up jumps and reference calls: %w", err)
@@ -144,10 +143,7 @@ func (vm *VM) AddProgram(prog *ebpf.ProgramSpec) (int, error) {
 // this functions was copied from ebpf.fixupJumpsAndCalls and slightly modified
 func fixupJumpsAndCalls(insns asm.Instructions) error {
 	symbolOffsets := make(map[string]asm.RawInstructionOffset)
-	iter := insns.Iterate()
-	for iter.Next() {
-		ins := iter.Ins
-
+	for i, ins := range insns {
 		if ins.Symbol() == "" {
 			continue
 		}
@@ -156,15 +152,10 @@ func fixupJumpsAndCalls(insns asm.Instructions) error {
 			return fmt.Errorf("duplicate symbol %s", ins.Symbol())
 		}
 
-		symbolOffsets[ins.Symbol()] = iter.Offset
+		symbolOffsets[ins.Symbol()] = asm.RawInstructionOffset(i)
 	}
 
-	iter = insns.Iterate()
-	for iter.Next() {
-		i := iter.Index
-		offset := iter.Offset
-		ins := iter.Ins
-
+	for i, ins := range insns {
 		if ins.Reference() == "" {
 			continue
 		}
@@ -176,7 +167,7 @@ func fixupJumpsAndCalls(insns asm.Instructions) error {
 				break
 			}
 
-			ins.Constant = int64(symOffset - offset - 1)
+			insns[i].Constant = int64(symOffset - asm.RawInstructionOffset(i) - 1)
 			continue
 
 		case ins.OpCode.Class().IsJump() && ins.Offset == -1:
@@ -184,7 +175,7 @@ func fixupJumpsAndCalls(insns asm.Instructions) error {
 				break
 			}
 
-			ins.Offset = int16(symOffset - offset - 1)
+			insns[i].Offset = int16(symOffset - asm.RawInstructionOffset(i) - 1)
 			continue
 
 		default:
