@@ -41,6 +41,18 @@ type LinuxMapDeleter interface {
 	Delete(key []byte) error
 }
 
+// LinuxMapPusher describes a LinuxMap into which you can push values without a key.
+type LinuxMapPusher interface {
+	// Pushes a key-less value into a map
+	Push(value []byte, cpuid int) error
+}
+
+// LinuxMapPopper describes a LinuxMap from which you can pop values without a key, deleting them from the map.
+type LinuxMapPopper interface {
+	// Pops a key-less value into a map
+	Pop(cpuid int) ([]byte, error)
+}
+
 // MapSpecToLinuxMap translates a map specification to a LinuxMap type which can be used in the LinuxEmulator.
 func MapSpecToLinuxMap(spec *ebpf.MapSpec) (LinuxMap, error) {
 	switch spec.Type {
@@ -51,6 +63,11 @@ func MapSpecToLinuxMap(spec *ebpf.MapSpec) (LinuxMap, error) {
 		// is the object type of the pointer stored in them, which the emulator still knows because of the map Spec.
 
 		return &LinuxArrayMap{
+			Spec: spec,
+		}, nil
+
+	case ebpf.PerfEventArray:
+		return &LinuxPerfEventArrayMap{
 			Spec: spec,
 		}, nil
 

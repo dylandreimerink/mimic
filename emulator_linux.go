@@ -4,6 +4,7 @@ import (
 	cryptoRand "crypto/rand"
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -24,6 +25,11 @@ type LinuxEmulatorSettings struct {
 	// The boot time of the emulator, is the boot time of the host by default, can be set so behavior is predictable.
 	// Value is used to calculate time since boot for bpf_ktime_get_ns helper function.
 	TimeOfBoot time.Time
+
+	// The size of the perf event ring buffer per cpu. When allocating memory for a MAP_TYPE_PERF_EVENT_ARRAY, this
+	// is the number of bytes per cpu reserved. This value is always rounded up to the nearest multiple of the
+	// systems page size.
+	PerfEventBufferSize int
 }
 
 // LinuxEmulatorOpts are options which can be passed to NewLinuxEmulator to modify the default settings.
@@ -68,9 +74,10 @@ func NewLinuxEmulator(opts ...LinuxEmulatorOpts) *LinuxEmulator {
 	emu := &LinuxEmulator{
 		Maps: make(map[string]LinuxMap),
 		settings: LinuxEmulatorSettings{
-			MaxTailCalls: 33, // The default max in Linux
-			RandomSeed:   int64(GetNativeEndianness().Uint64(seed)),
-			TimeOfBoot:   timeOfBoot(),
+			MaxTailCalls:        33, // The default max in Linux
+			RandomSeed:          int64(GetNativeEndianness().Uint64(seed)),
+			TimeOfBoot:          timeOfBoot(),
+			PerfEventBufferSize: os.Getpagesize(),
 		},
 	}
 

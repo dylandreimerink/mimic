@@ -31,6 +31,7 @@ var linuxHelpers = []HelperFunction{
 	asm.FnGetPrandomU32:     linuxHelperGetPRandomU32,
 	asm.FnGetSmpProcessorId: linuxHelperGetSmpProcessorID,
 	asm.FnTailCall:          linuxHelperTailcall,
+	asm.FnPerfEventOutput:   linuxHelperEventOutput,
 	asm.FnKtimeGetBootNs:    linuxHelperGetKTimeNs,
 	asm.FnKtimeGetCoarseNs:  linuxHelperGetKTimeNs,
 }
@@ -315,6 +316,69 @@ func linuxHelperTailcall(p *Process) error {
 	// Increment the tailcall count
 	pastTailcalls++
 	p.EmulatorValues[LinuxEmuProcValKeyTailcalls] = pastTailcalls
+
+	return nil
+}
+
+const (
+	// Mask containing the desired CPU index
+	bpfFIndexMask = 0xffffffff
+	// If masked flags is equal to bpfFCurrentCPU, use the current CPU as index
+	bpfFCurrentCPU = bpfFIndexMask
+	// Mask used to communicate the length of the ctx, for use in bpf_xdp_event_output and bpf_skb_event_output
+	// bpfFCtxLenMask = 0xfffff << 32
+)
+
+func linuxHelperEventOutput(p *Process) error {
+	// R1 = ctx, R2 = ptr to the perf array map, R3 = uint64 flags, R4 = ptr to value, R5 = uint64 size
+
+	// Deref the map pointer to get the actual map object
+	lm, err := regToMap(p, asm.R2)
+	if err != nil {
+		return err
+	}
+
+	m, ok := lm.(*LinuxPerfEventArrayMap)
+	if !ok {
+		return fmt.Errorf("R1 is not a perf event array map")
+	}
+
+	entry, off, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R4))
+	if !found {
+		// If the address is not valid, handle it gracefully
+		p.Registers.R0 = syscallErr(syscall.EINVAL)
+		return nil
+	}
+
+	vmmem, ok := entry.Object.(VMMem)
+	if !ok {
+		return fmt.Errorf("prog array lookup returned pointer to non-vm-memory")
+	}
+
+	val := make([]byte, p.Registers.R5)
+	err = vmmem.Read(off, val)
+	if err != nil {
+		return fmt.Errorf("vmmem read: %w", err)
+	}
+
+	idx := p.Registers.R3 & bpfFIndexMask
+	if idx == bpfFCurrentCPU {
+		idx = uint64(p.CPUID())
+	}
+
+	if int(idx) < 0 {
+		return fmt.Errorf("invalid cpuid: %d", idx)
+	}
+
+	err = m.Push(val, int(idx))
+	if err != nil {
+		if syserr, ok := err.(syscall.Errno); ok {
+			p.Registers.R0 = uint64(syserr)
+			return nil
+		}
+
+		return fmt.Errorf("push: %w", err)
+	}
 
 	return nil
 }

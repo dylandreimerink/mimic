@@ -243,7 +243,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_perf_event_read
 - [ ] bpf_redirect
 - [ ] bpf_get_route_realm (sk_buff)
-- [ ] bpf_perf_event_output
+- [x] bpf_perf_event_output
 - [ ] bpf_skb_load_bytes
 - [ ] bpf_get_stackid
 - [ ] bpf_csum_diff
@@ -410,7 +410,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [x] BPF_MAP_TYPE_HASH
 - [x] BPF_MAP_TYPE_ARRAY
 - [x] BPF_MAP_TYPE_PROG_ARRAY (covered by BPF_MAP_TYPE_ARRAY)
-- [ ] BPF_MAP_TYPE_PERF_EVENT_ARRAY
+- [x] BPF_MAP_TYPE_PERF_EVENT_ARRAY
 - [x] BPF_MAP_TYPE_PERCPU_HASH
 - [x] BPF_MAP_TYPE_PERCPU_ARRAY
 - [ ] BPF_MAP_TYPE_STACK_TRACE
