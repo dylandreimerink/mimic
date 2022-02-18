@@ -15,9 +15,12 @@ type LinuxMap interface {
 	Init(emulator *LinuxEmulator) error
 	GetSpec() ebpf.MapSpec
 
+	// Indices returns the amount of per-cpu indexes.
+	Indices() int
+
 	// Keys returns a byte slice containing all key values in their byte representation. The size is always a multiple
 	// of the about of entries in the map and the key size.
-	Keys() []byte
+	Keys(cpuid int) []byte
 
 	// Lookup returns a pointer to a value matching the key, or NULL if no matching value can be found.
 	// `key` must be the same length as defined in the map spec

@@ -8,6 +8,11 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+var (
+	_ LinuxMap        = (*LinuxArrayMap)(nil)
+	_ LinuxMapUpdater = (*LinuxArrayMap)(nil)
+)
+
 // LinuxArrayMap is the emulated version of ebpf.Array / BPF_MAP_TYPE_ARRAY.
 // Array maps have 4 byte integer keys from 0 to Spec.MaxEntries with arbitrary values
 type LinuxArrayMap struct {
@@ -49,9 +54,14 @@ func (m *LinuxArrayMap) GetSpec() ebpf.MapSpec {
 	return *m.Spec
 }
 
+// Indices returns the amount of per-cpu indexes.
+func (m *LinuxArrayMap) Indices() int {
+	return 1
+}
+
 // Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
 // the proper window into the slice based on the size of m.Spec.KeySize.
-func (m *LinuxArrayMap) Keys() []byte {
+func (m *LinuxArrayMap) Keys(cpuid int) []byte {
 	b := make([]byte, 4*m.Spec.MaxEntries)
 	bo := GetNativeEndianness()
 	for i := uint32(0); i < m.Spec.MaxEntries; i++ {
@@ -117,6 +127,11 @@ func (m *LinuxArrayMap) UpdateObject(key []byte, value LinuxMap, flags uint32) e
 	return m.Update(key, val, flags, 0)
 }
 
+var (
+	_ LinuxMap        = (*LinuxPerCPUArrayMap)(nil)
+	_ LinuxMapUpdater = (*LinuxPerCPUArrayMap)(nil)
+)
+
 // LinuxPerCPUArrayMap is the emulated version of ebpf.PerCPUArray / BPF_MAP_TYPE_PERCPU_ARRAY.
 // Array maps have 4 byte integer keys from 0 to Spec.MaxEntries, it value is the address of a map.
 type LinuxPerCPUArrayMap struct {
@@ -164,11 +179,16 @@ func (m *LinuxPerCPUArrayMap) GetSpec() ebpf.MapSpec {
 	return *m.Spec
 }
 
+// Indices returns the amount of per-cpu indexes.
+func (m *LinuxPerCPUArrayMap) Indices() int {
+	return len(m.arrayMaps)
+}
+
 // Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
 // the proper window into the slice based on the size of m.Spec.KeySize.
-func (m *LinuxPerCPUArrayMap) Keys() []byte {
+func (m *LinuxPerCPUArrayMap) Keys(cpuid int) []byte {
 	// Every map generates the same keys anyway
-	return m.arrayMaps[0].Keys()
+	return m.arrayMaps[cpuid].Keys(cpuid)
 }
 
 // Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.

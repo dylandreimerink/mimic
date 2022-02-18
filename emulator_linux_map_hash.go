@@ -11,6 +11,11 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+var (
+	_ LinuxMap        = (*LinuxHashMap)(nil)
+	_ LinuxMapUpdater = (*LinuxHashMap)(nil)
+)
+
 // LinuxHashMap is the emulated version of ebpf.Hash / BPF_MAP_TYPE_HASH.
 // Hash maps have arbitrary keys and values.
 type LinuxHashMap struct {
@@ -96,9 +101,14 @@ func (m *LinuxHashMap) GetSpec() ebpf.MapSpec {
 	return *m.Spec
 }
 
+// Indices returns the amount of per-cpu indexes.
+func (m *LinuxHashMap) Indices() int {
+	return 1
+}
+
 // Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
 // the proper window into the slice based on the size of m.Spec.KeySize.
-func (m *LinuxHashMap) Keys() []byte {
+func (m *LinuxHashMap) Keys(cpuid int) []byte {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -244,6 +254,11 @@ func (m *LinuxHashMap) Delete(key []byte) error {
 	return nil
 }
 
+var (
+	_ LinuxMap        = (*LinuxLRUHashMap)(nil)
+	_ LinuxMapUpdater = (*LinuxLRUHashMap)(nil)
+)
+
 // LinuxLRUHashMap is the emulated version of ebpf.LRUHash / BPF_MAP_TYPE_LRU_HASH.
 // This map type is a normal hash map which also records which map values are the Least Recently Used. If the map is
 // full and a new value is added, this map type will discard the Least Recently Used value from the map to make room
@@ -283,10 +298,15 @@ func (m *LinuxLRUHashMap) GetSpec() ebpf.MapSpec {
 	return *m.hashMap.Spec
 }
 
+// Indices returns the amount of per-cpu indexes.
+func (m *LinuxLRUHashMap) Indices() int {
+	return 1
+}
+
 // Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
 // the proper window into the slice based on the size of m.Spec.KeySize.
-func (m *LinuxLRUHashMap) Keys() []byte {
-	return m.hashMap.Keys()
+func (m *LinuxLRUHashMap) Keys(cpuid int) []byte {
+	return m.hashMap.Keys(cpuid)
 }
 
 // Lookup returns the virtual memory offset to the map value or 0 if no value can be found for the given key.
@@ -387,6 +407,11 @@ func (m *LinuxLRUHashMap) Delete(key []byte) error {
 	return nil
 }
 
+var (
+	_ LinuxMap        = (*LinuxPerCPUHashMap)(nil)
+	_ LinuxMapUpdater = (*LinuxPerCPUHashMap)(nil)
+)
+
 // LinuxPerCPUHashMap is the emulated version of ebpf.PerCPUHash / BPF_MAP_TYPE_PERCPU_HASH.
 // Hash maps have arbitrary keys and values.
 type LinuxPerCPUHashMap struct {
@@ -477,9 +502,14 @@ func (m *LinuxPerCPUHashMap) GetSpec() ebpf.MapSpec {
 	return *m.Spec
 }
 
+// Indices returns the amount of per-cpu indexes.
+func (m *LinuxPerCPUHashMap) Indices() int {
+	return len(m.values)
+}
+
 // Keys returns a byte slice which contains all keys in the map, keys are packed, the user is expected to calculate
 // the proper window into the slice based on the size of m.Spec.KeySize.
-func (m *LinuxPerCPUHashMap) Keys() []byte {
+func (m *LinuxPerCPUHashMap) Keys(cpuid int) []byte {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
