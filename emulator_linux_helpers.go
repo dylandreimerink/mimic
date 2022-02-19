@@ -32,6 +32,9 @@ var linuxHelpers = []HelperFunction{
 	asm.FnGetSmpProcessorId: linuxHelperGetSmpProcessorID,
 	asm.FnTailCall:          linuxHelperTailcall,
 	asm.FnPerfEventOutput:   linuxHelperEventOutput,
+	asm.FnMapPushElem:       linuxHelperMapPushElem,
+	asm.FnMapPopElem:        linuxHelperMapPopElem,
+	asm.FnMapPeekElem:       linuxHelperMapPeekElem,
 	asm.FnKtimeGetBootNs:    linuxHelperGetKTimeNs,
 	asm.FnKtimeGetCoarseNs:  linuxHelperGetKTimeNs,
 }
@@ -373,12 +376,157 @@ func linuxHelperEventOutput(p *Process) error {
 	err = m.Push(val, int(idx))
 	if err != nil {
 		if syserr, ok := err.(syscall.Errno); ok {
-			p.Registers.R0 = uint64(syserr)
+			p.Registers.R0 = syscallErr(syserr)
 			return nil
 		}
 
 		return fmt.Errorf("push: %w", err)
 	}
 
+	return nil
+}
+
+func linuxHelperMapPushElem(p *Process) error {
+	// R1 = ptr to map, R2 = ptr to value, R3 = flags
+
+	// Deref the map pointer to get the actual map object
+	lm, err := regToMap(p, asm.R1)
+	if err != nil {
+		return err
+	}
+	pm, ok := lm.(LinuxMapPusher)
+	if !ok {
+		return fmt.Errorf("given map is not a LinuxMapPusher")
+	}
+
+	entry, off, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R2))
+	if !found {
+		// If the address is not valid, handle it gracefully
+		p.Registers.R0 = syscallErr(syscall.EINVAL)
+		return nil
+	}
+
+	vmmem, ok := entry.Object.(VMMem)
+	if !ok {
+		return fmt.Errorf("value is pointer to non-vm-memory")
+	}
+
+	val := make([]byte, lm.GetSpec().ValueSize)
+	err = vmmem.Read(off, val)
+	if err != nil {
+		return fmt.Errorf("vmmem read: %w", err)
+	}
+
+	err = pm.Push(val, p.CPUID())
+	if err != nil {
+		if syserr, ok := err.(syscall.Errno); ok {
+			p.Registers.R0 = syscallErr(syserr)
+			return nil
+		}
+
+		return fmt.Errorf("push: %w", err)
+	}
+
+	p.Registers.R0 = 0
+	return nil
+}
+
+func linuxHelperMapPopElem(p *Process) error {
+	// R1 = ptr to map, R2 = ptr to value
+
+	// Deref the map pointer to get the actual map object
+	lm, err := regToMap(p, asm.R1)
+	if err != nil {
+		return err
+	}
+	pm, ok := lm.(LinuxMapPopper)
+	if !ok {
+		return fmt.Errorf("given map is not a LinuxMapPopper")
+	}
+
+	entry, off, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R2))
+	if !found {
+		// If the address is not valid, handle it gracefully
+		p.Registers.R0 = syscallErr(syscall.EINVAL)
+		return nil
+	}
+
+	vmmem, ok := entry.Object.(VMMem)
+	if !ok {
+		return fmt.Errorf("value is pointer to non-vm-memory")
+	}
+
+	val, err := pm.Pop(p.CPUID())
+	if err != nil {
+		if syserr, ok := err.(syscall.Errno); ok {
+			p.Registers.R0 = syscallErr(syserr)
+			return nil
+		}
+
+		return fmt.Errorf("pop: %w", err)
+	}
+
+	// Map empty
+	if val == 0 {
+		p.Registers.R0 = syscallErr(syscall.ENOMSG)
+		return nil
+	}
+
+	err = vmmem.Store(off, uint64(val), asm.Word)
+	if err != nil {
+		return fmt.Errorf("vmmem store: %w", err)
+	}
+
+	p.Registers.R0 = 0
+	return nil
+}
+
+func linuxHelperMapPeekElem(p *Process) error {
+	// R1 = ptr to map, R2 = ptr to value
+
+	// Deref the map pointer to get the actual map object
+	lm, err := regToMap(p, asm.R1)
+	if err != nil {
+		return err
+	}
+	_, ok := lm.(LinuxMapPopper)
+	if !ok {
+		return fmt.Errorf("given map is not a LinuxMapPopper")
+	}
+
+	entry, off, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R2))
+	if !found {
+		// If the address is not valid, handle it gracefully
+		p.Registers.R0 = syscallErr(syscall.EINVAL)
+		return nil
+	}
+
+	vmmem, ok := entry.Object.(VMMem)
+	if !ok {
+		return fmt.Errorf("value is pointer to non-vm-memory")
+	}
+
+	val, err := lm.Lookup([]byte{0, 0, 0, 0}, p.CPUID())
+	if err != nil {
+		if syserr, ok := err.(syscall.Errno); ok {
+			p.Registers.R0 = syscallErr(syserr)
+			return nil
+		}
+
+		return fmt.Errorf("peek: %w", err)
+	}
+
+	// Map empty
+	if val == 0 {
+		p.Registers.R0 = syscallErr(syscall.ENOMSG)
+		return nil
+	}
+
+	err = vmmem.Store(off, uint64(val), asm.Word)
+	if err != nil {
+		return fmt.Errorf("vmmem store: %w", err)
+	}
+
+	p.Registers.R0 = 0
 	return nil
 }

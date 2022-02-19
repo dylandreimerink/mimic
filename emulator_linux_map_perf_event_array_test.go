@@ -44,8 +44,6 @@ func TestRingBuffer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log(rb)
-
 	err = rb.Write(b)
 	if err == nil {
 		t.Fatal("buf full, expected an error")
@@ -68,6 +66,4 @@ func TestRingBuffer(t *testing.T) {
 	if err == nil {
 		t.Fatal("buf full, expected an error")
 	}
-
-	t.Log(rb)
 }

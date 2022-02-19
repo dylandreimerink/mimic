@@ -49,8 +49,8 @@ type LinuxMapPusher interface {
 
 // LinuxMapPopper describes a LinuxMap from which you can pop values without a key, deleting them from the map.
 type LinuxMapPopper interface {
-	// Pops a key-less value into a map
-	Pop(cpuid int) ([]byte, error)
+	// Pops a key-less value from a map
+	Pop(cpuid int) (uint32, error)
 }
 
 // MapSpecToLinuxMap translates a map specification to a LinuxMap type which can be used in the LinuxEmulator.
@@ -94,6 +94,16 @@ func MapSpecToLinuxMap(spec *ebpf.MapSpec) (LinuxMap, error) {
 	case ebpf.LRUHash, ebpf.LRUCPUHash:
 		// TODO implement per-CPU LRU map
 		return &LinuxLRUHashMap{
+			Spec: spec,
+		}, nil
+
+	case ebpf.Queue:
+		return &LinuxQueueMap{
+			Spec: spec,
+		}, nil
+
+	case ebpf.Stack:
+		return &LinuxStackMap{
 			Spec: spec,
 		}, nil
 

@@ -305,9 +305,9 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_sk_lookup_tcp
 - [ ] bpf_sk_lookup_udp
 - [ ] bpf_sk_release
-- [ ] bpf_map_push_elem
-- [ ] bpf_map_pop_elem
-- [ ] bpf_map_peek_elem
+- [x] bpf_map_push_elem
+- [x] bpf_map_pop_elem
+- [x] bpf_map_peek_elem
 - [ ] bpf_msg_push_data
 - [ ] bpf_msg_pop_data
 - [ ] bpf_rc_pointer_rel
@@ -428,8 +428,8 @@ Note: Marked list items were on the list, but have since been implemented.
 - [x] BPF_MAP_TYPE_CGROUP_STORAGE (covered by BPF_MAP_TYPE_HASH)
 - [x] BPF_MAP_TYPE_REUSEPORT_SOCKARRAY (covered by BPF_MAP_TYPE_ARRAY)
 - [x] BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE (covered by BPF_MAP_TYPE_PERCPU_HASH)
-- [ ] BPF_MAP_TYPE_QUEUE
-- [ ] BPF_MAP_TYPE_STACK
+- [x] BPF_MAP_TYPE_QUEUE
+- [x] BPF_MAP_TYPE_STACK
 - [x] BPF_MAP_TYPE_SK_STORAGE (covered by BPF_MAP_TYPE_HASH)
 - [x] BPF_MAP_TYPE_DEVMAP_HASH (covered by BPF_MAP_TYPE_HASH)
 - [x] BPF_MAP_TYPE_STRUCT_OPS (covered by BPF_MAP_TYPE_HASH)
