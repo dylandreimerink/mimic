@@ -227,7 +227,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] bpf_trace_printk
 - [x] bpf_get_prandom_u32
 - [x] bpf_get_smp_processor_id
-- [ ] bpf_skb_store_bytes (sk_buff)
+- [x] bpf_skb_store_bytes (sk_buff)
 - [ ] bpf_l3_csum_replace (sk_buff)
 - [ ] bpf_l4_csum_replace (sk_buff)
 - [X] bpf_tail_call

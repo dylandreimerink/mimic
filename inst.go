@@ -58,7 +58,7 @@ func initCustom() {
 	instructions[asm.OpCode(asm.JumpClass).SetJumpOp(asm.Exit)] = instExit
 
 	instructions[asm.OpCode(asm.LdClass).SetMode(asm.ImmMode).SetSize(asm.DWord)] = instLoad64Imm
-	// TODO Load socket buffer
+
 	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.Byte)] = instLoadMemory
 	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.Half)] = instLoadMemory
 	instructions[asm.OpCode(asm.LdXClass).SetMode(asm.MemMode).SetSize(asm.Word)] = instLoadMemory

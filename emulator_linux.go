@@ -120,7 +120,7 @@ func (le *LinuxEmulator) SetVM(vm *VM) {
 	le.vm = vm
 }
 
-// CallHelperFunction is called by the VM when it wan't to execute a helper function.
+// CallHelperFunction is called by the VM when it wants to execute a helper function.
 func (le *LinuxEmulator) CallHelperFunction(helperNr int32, p *Process) error {
 	if len(linuxHelpers) <= int(helperNr) {
 		return fmt.Errorf("unimplemented helper function %d", helperNr)
@@ -132,6 +132,100 @@ func (le *LinuxEmulator) CallHelperFunction(helperNr int32, p *Process) error {
 	}
 
 	return helper(p)
+}
+
+// CustomInstruction is called by the VM when it encounters a unimplemented CPU instruction, giving the emulator a
+// chance to provide an implementation.
+func (le *LinuxEmulator) CustomInstruction(inst asm.Instruction, process *Process) error {
+	switch inst.OpCode {
+	case asm.LoadAbsOp(asm.Byte), asm.LoadAbsOp(asm.Half), asm.LoadAbsOp(asm.Word), asm.LoadAbsOp(asm.DWord):
+		// https://www.kernel.org/doc/html/latest/bpf/instruction-set.html#packet-access-instructions
+
+		// R0 = ntohl(*(u32 *) (((struct sk_buff *) R6)->data + imm32))
+
+		// (((struct sk_buff *) R6)->data
+		skbEntry, _, found := process.VM.MemoryController.GetEntry(uint32(process.Registers.R6))
+		if !found {
+			return fmt.Errorf("mem ctl doesn't have an entry for address '0x%08X'", uint32(process.Registers.R6))
+		}
+		// TODO check if we can piece together a __sk_buff from PlainMemory
+		skb, ok := skbEntry.Object.(*SKBuff)
+		if !ok {
+			return fmt.Errorf("R6 is not a sk_buff")
+		}
+
+		// (((struct sk_buff *) R6)->data + imm32)
+		addr := skb.data + uint32(inst.Constant)
+		pktEntry, off, found := process.VM.MemoryController.GetEntry(addr)
+		if !found {
+			return fmt.Errorf("mem ctl doesn't have an entry for address '0x%08X'", addr)
+		}
+
+		vmmem, ok := pktEntry.Object.(VMMem)
+		if !ok {
+			return fmt.Errorf("%v is not a VMMem", pktEntry.Object)
+		}
+
+		var err error
+		process.Registers.R0, err = vmmem.Load(off, inst.OpCode.Size())
+		if err != nil {
+			return fmt.Errorf("packet read: %w", err)
+		}
+
+		// "and R1 - R5 are clobbered."
+		process.Registers.R1 = 0
+		process.Registers.R2 = 0
+		process.Registers.R3 = 0
+		process.Registers.R4 = 0
+		process.Registers.R5 = 0
+
+		return nil
+
+	case asm.LoadIndOp(asm.Byte), asm.LoadIndOp(asm.Half), asm.LoadIndOp(asm.Word), asm.LoadIndOp(asm.DWord):
+		// https://www.kernel.org/doc/html/latest/bpf/instruction-set.html#packet-access-instructions
+
+		// R0 = ntohl(*(u32 *) (((struct sk_buff *) R6)->data + src_reg + imm32))
+
+		// (((struct sk_buff *) R6)->data
+		skbEntry, _, found := process.VM.MemoryController.GetEntry(uint32(process.Registers.R6))
+		if !found {
+			return fmt.Errorf("mem ctl doesn't have an entry for address '0x%08X'", uint32(process.Registers.R6))
+		}
+		// TODO check if we can piece together a __sk_buff from PlainMemory
+		skb, ok := skbEntry.Object.(*SKBuff)
+		if !ok {
+			return fmt.Errorf("R6 is not a sk_buff")
+		}
+
+		// (((struct sk_buff *) R6)->data + src_reg + imm32)
+		addr := skb.data + uint32(process.Registers.Get(inst.Src)) + uint32(inst.Constant)
+		pktEntry, off, found := process.VM.MemoryController.GetEntry(addr)
+		if !found {
+			return fmt.Errorf("mem ctl doesn't have an entry for address '0x%08X'", addr)
+		}
+
+		vmmem, ok := pktEntry.Object.(VMMem)
+		if !ok {
+			return fmt.Errorf("%v is not a VMMem", pktEntry.Object)
+		}
+
+		var err error
+		process.Registers.R0, err = vmmem.Load(off, inst.OpCode.Size())
+		if err != nil {
+			return fmt.Errorf("packet read: %w", err)
+		}
+
+		// "and R1 - R5 are clobbered."
+		process.Registers.R1 = 0
+		process.Registers.R2 = 0
+		process.Registers.R3 = 0
+		process.Registers.R4 = 0
+		process.Registers.R5 = 0
+
+		return nil
+	}
+
+	return fmt.Errorf("unsupported eBPF op(%d) '%v' at PC(%d)", inst.OpCode, inst, process.Registers.PC)
 }
 
 // RewriteProgram is called by the VM when adding a program to it. It allows us to rewrite program instructions.

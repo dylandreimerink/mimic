@@ -30,6 +30,7 @@ var linuxHelpers = []HelperFunction{
 	asm.FnKtimeGetNs:        linuxHelperGetKTimeNs,
 	asm.FnGetPrandomU32:     linuxHelperGetPRandomU32,
 	asm.FnGetSmpProcessorId: linuxHelperGetSmpProcessorID,
+	asm.FnSkbStoreBytes:     linuxHelperSKBStoreBytes,
 	asm.FnTailCall:          linuxHelperTailcall,
 	asm.FnPerfEventOutput:   linuxHelperEventOutput,
 	asm.FnMapPushElem:       linuxHelperMapPushElem,
@@ -229,6 +230,47 @@ func linuxHelperGetPRandomU32(p *Process) error {
 // bpf_get_smp_processor_id
 func linuxHelperGetSmpProcessorID(p *Process) error {
 	p.Registers.R0 = uint64(p.CPUID())
+	return nil
+}
+
+// bpf_skb_store_bytes
+func linuxHelperSKBStoreBytes(p *Process) error {
+	// R1 = ctx (*sk_buff), R2 = offset, R3 = ptr to value, R4 = len, R5 = flags
+	entry, _, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R1))
+	if !found {
+		return fmt.Errorf("mem ctl, didn't find sk_buff at 0x%08X", p.Registers.R1)
+	}
+
+	buf, ok := entry.Object.(*SKBuff)
+	if !ok {
+		return fmt.Errorf("R1 is not a valid sk_buff")
+	}
+
+	// TODO handle flags (BPF_F_RECOMPUTE_CSUM, BPF_F_INVALIDATE_HASH)
+
+	entry, off, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R3))
+	if !found {
+		return fmt.Errorf("mem ctl, didn't find vm-mem at 0x%08X", p.Registers.R3)
+	}
+
+	vmmem, ok := entry.Object.(VMMem)
+	if !ok {
+		return fmt.Errorf("R3 is not vm-mem")
+	}
+
+	value := make([]byte, p.Registers.R4)
+	err := vmmem.Read(off, value)
+	if err != nil {
+		return fmt.Errorf("vm-mem read: %w", err)
+	}
+
+	err = buf.pkt.Write(uint32(p.Registers.R2), value)
+	if err != nil {
+		return fmt.Errorf("pkt write: %w", err)
+	}
+
+	p.Registers.R0 = 0
+
 	return nil
 }
 

@@ -1,6 +1,9 @@
 package mimic
 
-import "github.com/cilium/ebpf"
+import (
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/asm"
+)
 
 // Emulator describes a struct which implements eBPF features which are specific to a certain environment.
 type Emulator interface {
@@ -15,6 +18,9 @@ type Emulator interface {
 	// program and forwards the error to the process callee. Helper functions can also define graceful errors, which
 	// can be returned to the calling program by setting the R0 register for example.
 	CallHelperFunction(helperNr int32, p *Process) error
+	// CustomInstruction is called when a process encounters an instruction that is not implemented by the VM. This
+	// allows the emulator to implement custom eBPF CPU instructions as long as the opcode is not already in use.
+	CustomInstruction(inst asm.Instruction, process *Process) error
 	// RewriteProgram is called when a program is loaded into the VM. At this point the emulator may rewrite parts
 	// of the program with emulator specific references, map addresses for example. If an error is returned the program
 	// loading is halted.

@@ -6,5 +6,6 @@ replace github.com/cilium/ebpf => github.com/dylandreimerink/ebpf v0.8.1-0.20220
 
 require (
 	github.com/cilium/ebpf v0.8.0
+	github.com/google/gopacket v1.1.19
 	golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34
 )

@@ -37,6 +37,7 @@ func RegisterContextUnmarshaller(ctxType string, fn ContextUnmarshaller) {
 func init() {
 	RegisterContextUnmarshaller("generic", unmarshalGeneric)
 	RegisterContextUnmarshaller("xdp_md", unmarshalXDPmd)
+	RegisterContextUnmarshaller("sk_buff", unmarshalSKBuff)
 }
 
 type protoCtx struct {

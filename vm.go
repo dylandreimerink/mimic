@@ -304,7 +304,11 @@ func (p *Process) Step() (exited bool, err error) {
 	// Lookup the emulator function for the opcode of the instruction
 	vmInst := instructions[inst.OpCode]
 	if vmInst == nil {
-		return false, fmt.Errorf("unsupported eBPF op(%d) '%v' at PC(%d)", inst.OpCode, inst, p.Registers.PC)
+		if p.VM.settings.Emulator == nil {
+			return false, fmt.Errorf("unsupported eBPF op(%d) '%v' at PC(%d)", inst.OpCode, inst, p.Registers.PC)
+		}
+
+		vmInst = p.VM.settings.Emulator.CustomInstruction
 	}
 
 	// Store the program count of the current instruction
