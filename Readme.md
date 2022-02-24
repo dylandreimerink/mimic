@@ -200,7 +200,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [x] Process schedulers
   - [x] Per-CPU scheduler. Running eBPF processes on a worker pool no larger than the amount of logical CPU's. Theoretically the fastest for CPU heavy workloads.
   - [ ] Naive scheduling. Running each process in a Goroutine, mostly useful for programs which don't rely on Per-CPU maps and are I/O heavy or blocking.
-- [ ] `sk_buff` context. The Linux `sk_buff` structure is very complex, and would be hard to craft with the generic context. Making a purpose built context type for it seems logical.
+- [x] `sk_buff` context. The Linux `sk_buff` structure is very complex, and would be hard to craft with the generic context. Making a purpose built context type for it seems logical.
 
 **eBPF Instructions**
 
@@ -210,7 +210,7 @@ Note: Marked list items were on the list, but have since been implemented.
 - [ ] Atomic xor
 - [ ] Atomic exchange
 - [ ] Atomic compare and exchange
-- [ ] Packet access (To be implemented as a special helper function in emulator)
+- [x] Packet access
 
 **Mechanisms**
 

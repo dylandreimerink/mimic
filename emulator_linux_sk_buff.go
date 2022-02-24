@@ -2,6 +2,7 @@ package mimic
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -83,6 +84,11 @@ type SKBuff struct {
 	sk     *SK
 	skAddr uint32
 
+	dev *NetDev
+
+	flowKeys     *FlowKeys
+	flowKeysAddr uint32
+
 	// http://vger.kernel.org/~davem/skb_data.html
 
 	// The packet data, is plain memory so when loaded into the VM, it can be used for direct packet access
@@ -121,7 +127,7 @@ func SKBuffFromBytes(pktData []byte) (*SKBuff, error) {
 
 	// 2. sk = sk_alloc(net, AF_UNSPEC, GFP_USER, &bpf_dummy_proto, 1);
 	skBuf.sk = &SK{
-		family: unix.AF_UNSPEC,
+		Family: unix.AF_UNSPEC,
 		srcIP4: make(net.IP, 4),
 		dstIP4: make(net.IP, 4),
 		srcIP6: make(net.IP, 16),
@@ -130,7 +136,7 @@ func SKBuffFromBytes(pktData []byte) (*SKBuff, error) {
 
 	// 3. sock_init_data(NULL, sk);
 	// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/sock.c#L3201
-	skBuf.sk.state = unix.BPF_TCP_CLOSE
+	skBuf.sk.State = unix.BPF_TCP_CLOSE
 
 	// 4. skb = build_skb(data, 0);
 	// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/skbuff.c#L190
@@ -217,12 +223,12 @@ func SKBuffFromBytes(pktData []byte) (*SKBuff, error) {
 			switch l := l.(type) {
 			case *layers.IPv4:
 				// https://elixir.bootlin.com/linux/v5.16.10/source/net/bpf/test_run.c#L640
-				skBuf.sk.family = unix.AF_INET
+				skBuf.sk.Family = unix.AF_INET
 				skBuf.sk.srcIP4 = l.SrcIP
 				skBuf.sk.dstIP4 = l.DstIP
 			case *layers.IPv6:
 				// https://elixir.bootlin.com/linux/v5.16.10/source/net/bpf/test_run.c#L648
-				skBuf.sk.family = unix.AF_INET6
+				skBuf.sk.Family = unix.AF_INET6
 				skBuf.sk.srcIP6 = l.SrcIP
 				skBuf.sk.dstIP6 = l.DstIP
 			}
@@ -239,11 +245,11 @@ func SKBuffFromBytes(pktData []byte) (*SKBuff, error) {
 			// The prog test doesn't do this, but figured it can't hurt
 			switch l := l.(type) {
 			case *layers.TCP:
-				skBuf.sk.srcPort = uint32(l.SrcPort)
-				skBuf.sk.dstPort = uint32(l.DstPort)
+				skBuf.sk.SrcPort = uint32(l.SrcPort)
+				skBuf.sk.DstPort = uint32(l.DstPort)
 			case *layers.UDP:
-				skBuf.sk.srcPort = uint32(l.SrcPort)
-				skBuf.sk.dstPort = uint32(l.DstPort)
+				skBuf.sk.SrcPort = uint32(l.SrcPort)
+				skBuf.sk.DstPort = uint32(l.DstPort)
 			}
 
 			skBuf.transportHdr = uint16(offset)
@@ -412,7 +418,14 @@ func (sk *SKBuff) convertAccess(offset uint32, value uint64, size asm.Size, load
 		return 0, errReadOnly
 
 	case 10 * 4: // __sk_buff->ifindex
-	// TODO first we need sk_buff->dev https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8593
+		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8593
+		if load {
+			return toSize(uint64(sk.dev.IFIndex)), nil
+		}
+
+		// ifindex is readonly
+		return 0, errReadOnly
+
 	case 11 * 4: // __sk_buff->tc_index
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8720
 		if load {
@@ -510,7 +523,7 @@ func (sk *SKBuff) convertAccess(offset uint32, value uint64, size asm.Size, load
 	case 22 * 4: // __sk_buff->family
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8751
 		if load {
-			return toSize(uint64(sk.sk.family)), nil
+			return toSize(uint64(sk.sk.Family)), nil
 		}
 
 		// family is readonly
@@ -573,7 +586,7 @@ func (sk *SKBuff) convertAccess(offset uint32, value uint64, size asm.Size, load
 	case 33 * 4: // __sk_buff->remote_port
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8826
 		if load {
-			return toSize(uint64(sk.sk.dstPort)), nil
+			return toSize(uint64(sk.sk.DstPort)), nil
 		}
 
 		// remote_port is readonly
@@ -582,7 +595,7 @@ func (sk *SKBuff) convertAccess(offset uint32, value uint64, size asm.Size, load
 	case 34 * 4: // __sk_buff->local_port
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8841
 		if load {
-			return toSize(uint64(sk.sk.srcPort)), nil
+			return toSize(uint64(sk.sk.SrcPort)), nil
 		}
 
 		// remote_port is readonly
@@ -604,8 +617,14 @@ func (sk *SKBuff) convertAccess(offset uint32, value uint64, size asm.Size, load
 		return 0, errReadOnly
 
 	case 36 * 4, 37 * 4: // __sk_buff->flow_keys (__bpf_md_ptr(struct bpf_flow_keys *, flow_keys))
-	// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8517
-	// TODO required implementation of sk_buff->flow_keys
+		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8517
+		if load {
+			return uint64(sk.flowKeysAddr), nil
+		}
+
+		// flow_keys is readonly
+		return 0, errReadOnly
+
 	case 38 * 4, 39 * 4: // __u64 __sk_buff->tstamp
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8852
 		if load {
@@ -678,22 +697,74 @@ func (sk *SKBuff) Write(offset uint32, b []byte) error {
 
 // SK https://elixir.bootlin.com/linux/v5.16.10/source/include/uapi/linux/bpf.h#L5406
 type SK struct {
-	boundDevIF uint32
-	family     uint32
-	sockType   uint32
-	protocol   uint32
-	mark       uint32
-	priority   uint32
+	BoundDevIF uint32 `json:"boundDevIF"`
+	Family     uint32 `json:"family"`
+	SockType   uint32 `json:"sockType"`
+	Protocol   uint32 `json:"protocol"`
+	Mark       uint32 `json:"mark"`
+	Priority   uint32 `json:"priority"`
 
-	/* IP address also allows 1 and 2 bytes access */
+	SrcIP4         string `json:"srcIP4"`
 	srcIP4         net.IP
+	SrcIP6         string `json:"srcIP6"`
 	srcIP6         net.IP
-	srcPort        uint32 /* host byte order */
-	dstPort        uint32 /* network byte order */
+	SrcPort        uint32 `json:"srcPort"` /* host byte order */
+	DstPort        uint32 `json:"dstPort"` /* network byte order */
+	DstIP4         string `json:"dstIP4"`
 	dstIP4         net.IP
+	DstIP6         string `json:"dstIP6"`
 	dstIP6         net.IP
-	state          uint32
-	rxQueueMapping int32
+	State          uint32 `json:"state"`
+	RXQueueMapping int32  `json:"rxQueueMapping"`
+}
+
+func (sk *SK) UnmarshalJSON(b []byte) error {
+	type Alias SK
+	var a Alias
+	err := json.Unmarshal(b, &a)
+	if err != nil {
+		return err
+	}
+	*sk = SK(a)
+
+	sk.dstIP4 = make(net.IP, 4)
+	sk.srcIP4 = make(net.IP, 4)
+	sk.dstIP6 = make(net.IP, 16)
+	sk.srcIP6 = make(net.IP, 16)
+
+	if sk.DstIP4 != "" {
+		if ip := net.ParseIP(sk.DstIP4); ip != nil {
+			sk.dstIP4 = ip
+		}
+	}
+	if sk.SrcIP4 != "" {
+		if ip := net.ParseIP(sk.SrcIP4); ip != nil {
+			sk.srcIP4 = ip
+		}
+	}
+	if sk.DstIP6 != "" {
+		if ip := net.ParseIP(sk.DstIP6); ip != nil {
+			sk.dstIP6 = ip.To16()
+		}
+	}
+	if sk.SrcIP6 != "" {
+		if ip := net.ParseIP(sk.SrcIP6); ip != nil {
+			sk.srcIP6 = ip.To16()
+		}
+	}
+
+	return nil
+}
+
+// Load reads a single integer value of 1, 2, 4 or 8 bytes at a specific offset
+func (sk *SK) Load(offset uint32, size asm.Size) (uint64, error) {
+	return sk.convertAccess(offset, 0, size, true)
+}
+
+// Store write a single interger value of 1, 2, 4 or 8 bytes to a specific offset
+func (sk *SK) Store(offset uint32, value uint64, size asm.Size) error {
+	_, err := sk.convertAccess(offset, value, size, false)
+	return err
 }
 
 // https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8548
@@ -729,16 +800,16 @@ func (sk *SK) convertAccess(offset uint32, value uint64, size asm.Size, load boo
 	case 0 * 4: // bpf_sock->bound_dev_if
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8926
 		if load {
-			return toSize(uint64(sk.boundDevIF)), nil
+			return toSize(uint64(sk.BoundDevIF)), nil
 		}
 
-		sk.boundDevIF = uint32(toSize(value))
+		sk.BoundDevIF = uint32(toSize(value))
 		return 0, nil
 
 	case 1 * 4: // bpf_sock->family
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8959
 		if load {
-			return toSize(uint64(sk.family)), nil
+			return toSize(uint64(sk.Family)), nil
 		}
 
 		return 0, errReadOnly
@@ -746,7 +817,7 @@ func (sk *SK) convertAccess(offset uint32, value uint64, size asm.Size, load boo
 	case 2 * 4: // bpf_sock->type
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8970
 		if load {
-			return toSize(uint64(sk.sockType)), nil
+			return toSize(uint64(sk.SockType)), nil
 		}
 
 		return 0, errReadOnly
@@ -754,7 +825,7 @@ func (sk *SK) convertAccess(offset uint32, value uint64, size asm.Size, load boo
 	case 3 * 4: // bpf_sock->protocol
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8979
 		if load {
-			return toSize(uint64(sk.protocol)), nil
+			return toSize(uint64(sk.Protocol)), nil
 		}
 
 		return 0, errReadOnly
@@ -762,19 +833,19 @@ func (sk *SK) convertAccess(offset uint32, value uint64, size asm.Size, load boo
 	case 4 * 4: // bpf_sock->mark
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8937
 		if load {
-			return toSize(uint64(sk.mark)), nil
+			return toSize(uint64(sk.Mark)), nil
 		}
 
-		sk.mark = uint32(toSize(value))
+		sk.Mark = uint32(toSize(value))
 		return 0, nil
 
 	case 5 * 4: // bpf_sock->priority
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8948
 		if load {
-			return toSize(uint64(sk.priority)), nil
+			return toSize(uint64(sk.Priority)), nil
 		}
 
-		sk.priority = uint32(toSize(value))
+		sk.Priority = uint32(toSize(value))
 		return 0, nil
 
 	case 6*4 + 0, 6*4 + 1, 6*4 + 2, 6*4 + 3: // bpf_sock->src_ipv4
@@ -805,7 +876,21 @@ func (sk *SK) convertAccess(offset uint32, value uint64, size asm.Size, load boo
 		return b2i(v), nil
 
 	case 11 * 4: // bpf_sock->src_port
+		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L9041
+		if load {
+			return toSize(uint64(sk.SrcPort)), nil
+		}
+
+		return 0, errReadOnly
+
 	case 12 * 4: // bpf_sock->dst_port
+		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L9051
+		if load {
+			return toSize(uint64(sk.DstPort)), nil
+		}
+
+		return 0, errReadOnly
+
 	case 13*4 + 0, 13*4 + 1, 13*4 + 2, 13*4 + 3: // bpf_sock->dst_ipv4
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8997
 		if !load {
@@ -836,7 +921,7 @@ func (sk *SK) convertAccess(offset uint32, value uint64, size asm.Size, load boo
 	case 18 * 4: // bpf_sock->state
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L9061
 		if load {
-			return toSize(uint64(sk.state)), nil
+			return toSize(uint64(sk.State)), nil
 		}
 
 		return 0, errReadOnly
@@ -844,7 +929,7 @@ func (sk *SK) convertAccess(offset uint32, value uint64, size asm.Size, load boo
 	case 19 * 4: // bpf_sock->rx_queue_mapping
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L9070
 		if load {
-			return toSize(uint64(sk.rxQueueMapping)), nil
+			return toSize(uint64(sk.RXQueueMapping)), nil
 		}
 
 		return 0, errReadOnly
@@ -852,8 +937,6 @@ func (sk *SK) convertAccess(offset uint32, value uint64, size asm.Size, load boo
 	default:
 		return 0, fmt.Errorf("invalid offset '%d' into __sk_buff", offset)
 	}
-
-	return 0, fmt.Errorf("offset '%d' into __sk_buff not yet implemented", offset)
 }
 
 // Size returns the size of the bpf_sk (not the actual sk, but its virtual address proxy range)
@@ -873,6 +956,210 @@ func (sk *SK) Write(offset uint32, b []byte) error {
 	// Write is not used by the eBPF VM directly, only by helpers, so as long as helpers don't attempt to read from the
 	// sk_buff, we should be good.
 	return errors.New("not implemented")
+}
+
+// NetDev represents a network device to which a socket / socket_buffer is connected
+type NetDev struct {
+	IFIndex uint32 `json:"ifIndex"`
+}
+
+type FlowKeys struct {
+	Nhoff uint16 `json:"nhoff"`
+	Thoff uint16 `json:"thoff"`
+	// ETH_P_* of valid addrs
+	AddrProto     uint16 `json:"addrProto"`
+	IsFrag        uint8  `json:"isFrag"`
+	IsFirstFrag   uint8  `json:"isFirstFrag"`
+	IsEncap       uint8  `json:"isEncap"`
+	IPProto       uint8  `json:"ipProto"`
+	NProto        uint16 `json:"nProto"`
+	Sport         uint16 `json:"sport"`
+	Dport         uint16 `json:"dport"`
+	SrcIPv6orIPv4 net.IP `json:"ip"`
+	Flags         uint32 `json:"flags"`
+	FlowLabel     uint32 `json:"flowLabel"`
+}
+
+// Load reads a single integer value of 1, 2, 4 or 8 bytes at a specific offset
+func (fk *FlowKeys) Load(offset uint32, size asm.Size) (uint64, error) {
+	return fk.convertAccess(offset, 0, size, true)
+}
+
+// Store write a single interger value of 1, 2, 4 or 8 bytes to a specific offset
+func (fk *FlowKeys) Store(offset uint32, value uint64, size asm.Size) error {
+	_, err := fk.convertAccess(offset, value, size, false)
+	return err
+}
+
+func (fk *FlowKeys) convertAccess(offset uint32, value uint64, size asm.Size, load bool) (uint64, error) {
+	toSize := func(i uint64) uint64 {
+		switch size {
+		case asm.Byte:
+			return uint64(uint8(i))
+		case asm.Half:
+			return uint64(uint16(i))
+		case asm.Word:
+			return uint64(uint32(i))
+		case asm.DWord:
+			return i
+		}
+		panic("unknown size")
+	}
+	b2i := func(b []byte) uint64 {
+		switch size {
+		case asm.Byte:
+			return uint64(b[0])
+		case asm.Half:
+			return uint64(binary.BigEndian.Uint16(b))
+		case asm.Word:
+			return uint64(binary.BigEndian.Uint32(b))
+		case asm.DWord:
+			return binary.BigEndian.Uint64(b)
+		}
+		panic("unknown size")
+	}
+
+	switch offset {
+	case 0, 1: // bpf_flow_keys->nhoff
+		if load {
+			return toSize(uint64(fk.Nhoff)), nil
+		}
+
+		fk.Nhoff = uint16(toSize(value))
+		return 0, nil
+
+	case 2, 3: // bpf_flow_keys->thoff
+		if load {
+			return toSize(uint64(fk.Thoff)), nil
+		}
+
+		fk.Thoff = uint16(toSize(value))
+		return 0, nil
+
+	case 4, 5: // bpf_flow_keys->addr_proto
+		if load {
+			return toSize(uint64(fk.AddrProto)), nil
+		}
+
+		fk.AddrProto = uint16(toSize(value))
+		return 0, nil
+
+	case 6: // bpf_flow_keys->is_frag
+		if load {
+			return toSize(uint64(fk.IsFrag)), nil
+		}
+
+		fk.IsFrag = uint8(toSize(value))
+		return 0, nil
+
+	case 7: // bpf_flow_keys->is_first_frag
+		if load {
+			return toSize(uint64(fk.IsFirstFrag)), nil
+		}
+
+		fk.IsFirstFrag = uint8(toSize(value))
+		return 0, nil
+
+	case 8: // bpf_flow_keys->is_encap
+		if load {
+			return toSize(uint64(fk.IsEncap)), nil
+		}
+
+		fk.IsEncap = uint8(toSize(value))
+		return 0, nil
+
+	case 9: // bpf_flow_keys->ip_proto
+		if load {
+			return toSize(uint64(fk.IPProto)), nil
+		}
+
+		fk.IPProto = uint8(toSize(value))
+		return 0, nil
+
+	case 10, 11: // bpf_flow_keys->n_proto
+		if load {
+			return toSize(uint64(fk.NProto)), nil
+		}
+
+		fk.NProto = uint16(toSize(value))
+		return 0, nil
+
+	case 12, 13: // bpf_flow_keys->sport
+		if load {
+			return toSize(uint64(fk.Sport)), nil
+		}
+
+		fk.Sport = uint16(toSize(value))
+		return 0, nil
+
+	case 14, 15: // bpf_flow_keys->dport
+		if load {
+			return toSize(uint64(fk.Dport)), nil
+		}
+
+		fk.Dport = uint16(toSize(value))
+		return 0, nil
+
+	case 16 + 0, 16 + 1, 16 + 2, 16 + 3,
+		16 + 4, 16 + 5, 16 + 6, 16 + 7,
+		16 + 8, 16 + 9, 16 + 10, 16 + 11,
+		16 + 12, 16 + 13, 16 + 14, 16 + 15: // bpf_flow_keys->{ipv4_dst,ipv4_src,ipv6_dst,ipv6_src}
+		ip := make(net.IP, 16)
+		copy(ip, fk.SrcIPv6orIPv4)
+		if load {
+			return b2i(ip[offset : offset+uint32(size.Sizeof())]), nil
+		}
+
+		switch size {
+		case asm.Byte:
+			ip[offset] = byte(value)
+		case asm.Half:
+			GetNativeEndianness().PutUint16(ip[offset:], uint16(value))
+		case asm.Word:
+			GetNativeEndianness().PutUint32(ip[offset:], uint32(value))
+		case asm.DWord:
+			GetNativeEndianness().PutUint64(ip[offset:], value)
+		}
+		fk.SrcIPv6orIPv4 = ip
+
+		return 0, nil
+
+	case 32, 33, 34, 35: // bpf_flow_keys->flags
+		if load {
+			return toSize(uint64(fk.Flags)), nil
+		}
+
+		fk.Flags = uint32(toSize(value))
+		return 0, nil
+
+	case 36, 37, 38, 39: // bpf_flow_keys->flow_label
+		if load {
+			return toSize(uint64(fk.FlowLabel)), nil
+		}
+
+		fk.FlowLabel = uint32(toSize(value))
+		return 0, nil
+	}
+
+	return 0, fmt.Errorf("invalid offset '%d' into bpf_flow_keys", offset)
+}
+
+// Read reads a byte slice of arbitrary size, the length of 'b' is used to determine the requested size
+func (fk *FlowKeys) Read(offset uint32, b []byte) error {
+	// Read is not used by the eBPF VM directly, only by helpers, so as long as helpers don't attempt to read from the
+	// sk_buff, we should be good.
+	return errors.New("not implemented")
+}
+
+// Write write a byte slice of arbitrary size to the memory
+func (fk *FlowKeys) Write(offset uint32, b []byte) error {
+	// Write is not used by the eBPF VM directly, only by helpers, so as long as helpers don't attempt to read from the
+	// sk_buff, we should be good.
+	return errors.New("not implemented")
+}
+
+func (fk *FlowKeys) Size() int {
+	return 40
 }
 
 type skBuffPktType uint8

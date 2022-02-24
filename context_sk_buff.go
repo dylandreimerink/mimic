@@ -19,7 +19,11 @@ func unmarshalSKBuff(name string, ctx json.RawMessage) (Context, error) {
 type LinuxContextSKBuff struct {
 	Name string `json:"-"`
 
-	Packet []byte `json:"packet"`
+	Packet   []byte    `json:"packet"`
+	SK       *SK       `json:"sock"`
+	Dev      *NetDev   `json:"dev"`
+	FlowKeys *FlowKeys `json:"flowKeys"`
+
 	skBuff *SKBuff
 }
 
@@ -40,6 +44,21 @@ func (c *LinuxContextSKBuff) Load(process *Process) error {
 		return fmt.Errorf("parse sk_buff: %w", err)
 	}
 
+	// If the user specified a custom socket, use that instread
+	if c.SK != nil {
+		c.skBuff.sk = c.SK
+	}
+
+	if c.Dev == nil {
+		c.Dev = &NetDev{}
+	}
+	c.skBuff.dev = c.Dev
+
+	if c.FlowKeys == nil {
+		c.FlowKeys = &FlowKeys{}
+	}
+	c.skBuff.flowKeys = c.FlowKeys
+
 	skBuffentry, err := process.VM.MemoryController.AddEntry(c.skBuff, uint32(c.skBuff.Size()), "sk_buff")
 	if err != nil {
 		return fmt.Errorf("memory controller add sk_buff: %w", err)
@@ -50,6 +69,16 @@ func (c *LinuxContextSKBuff) Load(process *Process) error {
 		return fmt.Errorf("memory controller add sk: %w", err)
 	}
 	c.skBuff.skAddr = skEntry.Addr
+
+	flowKeysEntry, err := process.VM.MemoryController.AddEntry(
+		c.skBuff.flowKeys,
+		uint32(c.skBuff.flowKeys.Size()),
+		"bpf_flow_keys",
+	)
+	if err != nil {
+		return fmt.Errorf("memory controller add flow_keys: %w", err)
+	}
+	c.skBuff.flowKeysAddr = flowKeysEntry.Addr
 
 	pktEntry, err := process.VM.MemoryController.AddEntry(
 		c.skBuff.pkt,
