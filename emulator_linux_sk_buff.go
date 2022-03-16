@@ -718,6 +718,7 @@ type SK struct {
 	RXQueueMapping int32  `json:"rxQueueMapping"`
 }
 
+// UnmarshalJSON implements json.Unmarshaler
 func (sk *SK) UnmarshalJSON(b []byte) error {
 	type Alias SK
 	var a Alias
@@ -963,6 +964,7 @@ type NetDev struct {
 	IFIndex uint32 `json:"ifIndex"`
 }
 
+// FlowKeys describe the flow information of a sk_buff
 type FlowKeys struct {
 	Nhoff uint16 `json:"nhoff"`
 	Thoff uint16 `json:"thoff"`
@@ -1158,6 +1160,7 @@ func (fk *FlowKeys) Write(offset uint32, b []byte) error {
 	return errors.New("not implemented")
 }
 
+// Size returns the size of a flowKeys struct in bytes
 func (fk *FlowKeys) Size() int {
 	return 40
 }

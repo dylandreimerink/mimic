@@ -38,6 +38,11 @@ func (c *LinuxContextXDP) GetName() string {
 	return c.Name
 }
 
+// SetName set the name of the context
+func (c *LinuxContextXDP) SetName(name string) {
+	c.Name = name
+}
+
 // Load load the context into the memory of the process
 func (c *LinuxContextXDP) Load(process *Process) error {
 	if c.pkt != nil || c.xdpMD != nil {

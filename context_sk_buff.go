@@ -16,6 +16,7 @@ func unmarshalSKBuff(name string, ctx json.RawMessage) (Context, error) {
 	return &result, nil
 }
 
+// LinuxContextSKBuff is a context for skb programs
 type LinuxContextSKBuff struct {
 	Name string `json:"-"`
 
@@ -30,6 +31,11 @@ type LinuxContextSKBuff struct {
 // GetName return the context name
 func (c *LinuxContextSKBuff) GetName() string {
 	return c.Name
+}
+
+// SetName sets the name of the context
+func (c *LinuxContextSKBuff) SetName(name string) {
+	c.Name = name
 }
 
 // Load load the context into the memory of the process

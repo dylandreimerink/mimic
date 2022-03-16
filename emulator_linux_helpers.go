@@ -22,23 +22,391 @@ import (
 // specific contract.
 type HelperFunction func(p *Process) error
 
-var linuxHelpers = []HelperFunction{
-	0:                       nil, // 0 is not a valid helper function
-	asm.FnMapLookupElem:     linuxHelperMapLookupElem,
-	asm.FnMapUpdateElem:     linuxHelperMapUpdateElem,
-	asm.FnMapDeleteElem:     linuxHelperMapDeleteElem,
-	asm.FnKtimeGetNs:        linuxHelperGetKTimeNs,
-	asm.FnGetPrandomU32:     linuxHelperGetPRandomU32,
-	asm.FnGetSmpProcessorId: linuxHelperGetSmpProcessorID,
-	asm.FnSkbStoreBytes:     linuxHelperSKBStoreBytes,
-	asm.FnTailCall:          linuxHelperTailcall,
-	asm.FnPerfEventOutput:   linuxHelperEventOutput,
-	asm.FnMapPushElem:       linuxHelperMapPushElem,
-	asm.FnMapPopElem:        linuxHelperMapPopElem,
-	asm.FnMapPeekElem:       linuxHelperMapPeekElem,
-	asm.FnKtimeGetBootNs:    linuxHelperGetKTimeNs,
-	asm.FnKtimeGetCoarseNs:  linuxHelperGetKTimeNs,
-}
+var (
+	// A mapping of emulated helper functions, functions in this list MAY be replayed with the emulated version as
+	// fallback, or replaying may not be possible at all.
+	emulatedLinuxHelpers = []HelperFunction{
+		0:                                nil, // 0 is not a valid helper function
+		asm.FnMapLookupElem:              linuxHelperMapLookupElem,
+		asm.FnMapUpdateElem:              linuxHelperMapUpdateElem,
+		asm.FnMapDeleteElem:              linuxHelperMapDeleteElem,
+		asm.FnProbeRead:                  linuxHelperCantEmulate,
+		asm.FnKtimeGetNs:                 linuxHelperGetKTimeNs,
+		asm.FnGetPrandomU32:              linuxHelperGetPRandomU32,
+		asm.FnGetSmpProcessorId:          linuxHelperGetSmpProcessorID,
+		asm.FnSkbStoreBytes:              linuxHelperSKBStoreBytes,
+		asm.FnL3CsumReplace:              nil, // TODO
+		asm.FnL4CsumReplace:              nil, // TODO
+		asm.FnTailCall:                   linuxHelperTailcall,
+		asm.FnCloneRedirect:              nil, // TODO
+		asm.FnGetCurrentPidTgid:          linuxHelperCantEmulate,
+		asm.FnGetCurrentUidGid:           linuxHelperCantEmulate,
+		asm.FnGetCurrentComm:             linuxHelperCantEmulate,
+		asm.FnGetCgroupClassid:           linuxHelperCantEmulate,
+		asm.FnSkbVlanPush:                nil, // TODO
+		asm.FnSkbVlanPop:                 nil, // TODO
+		asm.FnSkbGetTunnelKey:            nil, // TODO
+		asm.FnSkbSetTunnelKey:            nil, // TODO
+		asm.FnPerfEventRead:              linuxHelperCantEmulate,
+		asm.FnRedirect:                   nil, // TODO
+		asm.FnGetRouteRealm:              linuxHelperCantEmulate,
+		asm.FnPerfEventOutput:            linuxHelperEventOutput,
+		asm.FnSkbLoadBytes:               nil, // TODO
+		asm.FnGetStackid:                 linuxHelperCantEmulate,
+		asm.FnCsumDiff:                   nil, // TODO
+		asm.FnSkbGetTunnelOpt:            nil, // TODO
+		asm.FnSkbSetTunnelOpt:            nil, // TODO
+		asm.FnSkbChangeProto:             nil, // TODO
+		asm.FnSkbChangeType:              nil, // TODO
+		asm.FnSkbUnderCgroup:             nil, // TODO
+		asm.FnGetHashRecalc:              nil, // TODO
+		asm.FnGetCurrentTask:             linuxHelperCantEmulate,
+		asm.FnProbeWriteUser:             linuxHelperCantEmulate,
+		asm.FnCurrentTaskUnderCgroup:     nil, // TODO
+		asm.FnSkbChangeTail:              nil, // TODO
+		asm.FnSkbPullData:                nil, // TODO
+		asm.FnCsumUpdate:                 nil, // TODO
+		asm.FnSetHashInvalid:             nil, // TODO
+		asm.FnGetNumaNodeId:              linuxHelperCantEmulate,
+		asm.FnSkbChangeHead:              nil, // TODO
+		asm.FnXdpAdjustHead:              nil, // TODO
+		asm.FnProbeReadStr:               linuxHelperCantEmulate,
+		asm.FnGetSocketCookie:            linuxHelperCantEmulate,
+		asm.FnGetSocketUid:               linuxHelperCantEmulate,
+		asm.FnSetHash:                    nil, // TODO
+		asm.FnSetsockopt:                 nil, // TODO
+		asm.FnSkbAdjustRoom:              nil, // TODO
+		asm.FnRedirectMap:                nil, // TODO
+		asm.FnSkRedirectMap:              nil, // TODO
+		asm.FnSockMapUpdate:              nil, // TODO
+		asm.FnXdpAdjustMeta:              nil, // TODO
+		asm.FnPerfEventReadValue:         linuxHelperCantEmulate,
+		asm.FnPerfProgReadValue:          linuxHelperCantEmulate,
+		asm.FnGetsockopt:                 nil, // TODO
+		asm.FnOverrideReturn:             nil, // TODO
+		asm.FnSockOpsCbFlagsSet:          nil, // TODO
+		asm.FnMsgRedirectMap:             nil, // TODO
+		asm.FnMsgApplyBytes:              nil, // TODO
+		asm.FnMsgCorkBytes:               nil, // TODO
+		asm.FnMsgPullData:                nil, // TODO
+		asm.FnBind:                       nil, // TODO
+		asm.FnXdpAdjustTail:              nil, // TODO
+		asm.FnSkbGetXfrmState:            nil, // TODO
+		asm.FnGetStack:                   linuxHelperCantEmulate,
+		asm.FnSkbLoadBytesRelative:       nil, // TODO
+		asm.FnFibLookup:                  linuxHelperCantEmulate,
+		asm.FnSockHashUpdate:             nil, // TODO
+		asm.FnMsgRedirectHash:            nil, // TODO
+		asm.FnSkRedirectHash:             nil, // TODO
+		asm.FnLwtPushEncap:               nil, // TODO
+		asm.FnLwtSeg6StoreBytes:          nil, // TODO
+		asm.FnLwtSeg6AdjustSrh:           nil, // TODO
+		asm.FnLwtSeg6Action:              nil, // TODO
+		asm.FnRcRepeat:                   nil, // TODO
+		asm.FnRcKeydown:                  nil, // TODO
+		asm.FnSkbCgroupId:                nil, // TODO
+		asm.FnGetCurrentCgroupId:         linuxHelperCantEmulate,
+		asm.FnGetLocalStorage:            nil, // TODO
+		asm.FnSkSelectReuseport:          nil, // TODO
+		asm.FnSkbAncestorCgroupId:        nil, // TODO
+		asm.FnSkLookupTcp:                nil, // TODO
+		asm.FnSkLookupUdp:                nil, // TODO
+		asm.FnSkRelease:                  nil, // TODO
+		asm.FnMapPushElem:                linuxHelperMapPushElem,
+		asm.FnMapPopElem:                 linuxHelperMapPopElem,
+		asm.FnMapPeekElem:                linuxHelperMapPeekElem,
+		asm.FnMsgPushData:                nil, // TODO
+		asm.FnMsgPopData:                 nil, // TODO
+		asm.FnRcPointerRel:               nil, // TODO
+		asm.FnSpinLock:                   nil, // TODO
+		asm.FnSpinUnlock:                 nil, // TODO
+		asm.FnSkFullsock:                 nil, // TODO
+		asm.FnTcpSock:                    nil, // TODO
+		asm.FnSkbEcnSetCe:                nil, // TODO
+		asm.FnGetListenerSock:            nil, // TODO
+		asm.FnSkcLookupTcp:               nil, // TODO
+		asm.FnTcpCheckSyncookie:          nil, // TODO
+		asm.FnSysctlGetName:              nil, // TODO
+		asm.FnSysctlGetCurrentValue:      nil, // TODO
+		asm.FnSysctlGetNewValue:          nil, // TODO
+		asm.FnSysctlSetNewValue:          nil, // TODO
+		asm.FnStrtol:                     nil, // TODO
+		asm.FnStrtoul:                    nil, // TODO
+		asm.FnSkStorageGet:               nil, // TODO
+		asm.FnSkStorageDelete:            nil, // TODO
+		asm.FnSendSignal:                 nil, // TODO
+		asm.FnTcpGenSyncookie:            nil, // TODO
+		asm.FnSkbOutput:                  nil, // TODO
+		asm.FnProbeReadUser:              linuxHelperCantEmulate,
+		asm.FnProbeReadKernel:            linuxHelperCantEmulate,
+		asm.FnProbeReadUserStr:           linuxHelperCantEmulate,
+		asm.FnProbeReadKernelStr:         linuxHelperCantEmulate,
+		asm.FnTcpSendAck:                 nil, // TODO
+		asm.FnSendSignalThread:           nil, // TODO
+		asm.FnJiffies64:                  nil, // TODO
+		asm.FnReadBranchRecords:          linuxHelperCantEmulate,
+		asm.FnGetNsCurrentPidTgid:        linuxHelperCantEmulate,
+		asm.FnXdpOutput:                  nil, // TODO
+		asm.FnGetNetnsCookie:             linuxHelperCantEmulate,
+		asm.FnGetCurrentAncestorCgroupId: linuxHelperCantEmulate,
+		asm.FnSkAssign:                   nil, // TODO
+		asm.FnKtimeGetBootNs:             linuxHelperGetKTimeNs,
+		asm.FnSeqPrintf:                  nil, // TODO
+		asm.FnSeqWrite:                   nil, // TODO
+		asm.FnSkCgroupId:                 linuxHelperCantEmulate,
+		asm.FnSkAncestorCgroupId:         linuxHelperCantEmulate,
+		asm.FnRingbufOutput:              nil, // TODO
+		asm.FnRingbufReserve:             nil, // TODO
+		asm.FnRingbufSubmit:              nil, // TODO
+		asm.FnRingbufDiscard:             nil, // TODO
+		asm.FnRingbufQuery:               nil, // TODO
+		asm.FnCsumLevel:                  nil, // TODO
+		asm.FnSkcToTcp6Sock:              nil, // TODO
+		asm.FnSkcToTcpSock:               nil, // TODO
+		asm.FnSkcToTcpTimewaitSock:       nil, // TODO
+		asm.FnSkcToTcpRequestSock:        nil, // TODO
+		asm.FnSkcToUdp6Sock:              nil, // TODO
+		asm.FnGetTaskStack:               linuxHelperCantEmulate,
+		asm.FnLoadHdrOpt:                 nil, // TODO
+		asm.FnStoreHdrOpt:                nil, // TODO
+		asm.FnReserveHdrOpt:              nil, // TODO
+		asm.FnInodeStorageGet:            nil, // TODO
+		asm.FnInodeStorageDelete:         nil, // TODO
+		asm.FnDPath:                      nil, // TODO
+		asm.FnCopyFromUser:               linuxHelperCantEmulate,
+		asm.FnSnprintfBtf:                nil, // TODO
+		asm.FnSeqPrintfBtf:               nil, // TODO
+		asm.FnSkbCgroupClassid:           linuxHelperCantEmulate,
+		asm.FnRedirectNeigh:              nil, // TODO
+		asm.FnPerCpuPtr:                  nil, // TODO
+		asm.FnThisCpuPtr:                 nil, // TODO
+		asm.FnRedirectPeer:               nil, // TODO
+		asm.FnTaskStorageGet:             nil, // TODO
+		asm.FnTaskStorageDelete:          nil, // TODO
+		asm.FnGetCurrentTaskBtf:          nil, // TODO
+		asm.FnBprmOptsSet:                nil, // TODO
+		asm.FnKtimeGetCoarseNs:           linuxHelperGetKTimeNs,
+		asm.FnImaInodeHash:               nil, // TODO
+		asm.FnSockFromFile:               nil, // TODO
+		asm.FnCheckMtu:                   nil, // TODO
+		asm.FnForEachMapElem:             nil, // TODO
+		asm.FnSnprintf:                   nil, // TODO
+		asm.FnSysBpf:                     nil, // TODO
+		asm.FnBtfFindByNameKind:          nil, // TODO
+		asm.FnSysClose:                   nil, // TODO
+		asm.FnTimerInit:                  nil, // TODO
+		asm.FnTimerSetCallback:           nil, // TODO
+		asm.FnTimerStart:                 nil, // TODO
+		asm.FnTimerCancel:                nil, // TODO
+		asm.FnGetFuncIp:                  nil, // TODO
+		asm.FnGetAttachCookie:            nil, // TODO
+		asm.FnTaskPtRegs:                 nil, // TODO
+	}
+	// A list of helper functions which can be replayed, functions not in this list MUST be emulated due to side
+	// effects.
+	replayableHelpers = []bool{
+		0:                                false, // 0 is not a valid helper function
+		asm.FnMapLookupElem:              false,
+		asm.FnMapUpdateElem:              false,
+		asm.FnMapDeleteElem:              false,
+		asm.FnProbeRead:                  true,
+		asm.FnKtimeGetNs:                 true,
+		asm.FnTracePrintk:                false,
+		asm.FnGetPrandomU32:              true,
+		asm.FnGetSmpProcessorId:          true,
+		asm.FnSkbStoreBytes:              false,
+		asm.FnL3CsumReplace:              false,
+		asm.FnL4CsumReplace:              false,
+		asm.FnTailCall:                   false,
+		asm.FnCloneRedirect:              false,
+		asm.FnGetCurrentPidTgid:          true,
+		asm.FnGetCurrentUidGid:           true,
+		asm.FnGetCurrentComm:             true,
+		asm.FnGetCgroupClassid:           true,
+		asm.FnSkbVlanPush:                false,
+		asm.FnSkbVlanPop:                 false,
+		asm.FnSkbGetTunnelKey:            false, // TODO
+		asm.FnSkbSetTunnelKey:            false, // TODO
+		asm.FnPerfEventRead:              true,
+		asm.FnRedirect:                   true,
+		asm.FnGetRouteRealm:              true,
+		asm.FnPerfEventOutput:            false,
+		asm.FnSkbLoadBytes:               true,
+		asm.FnGetStackid:                 true,
+		asm.FnCsumDiff:                   true,
+		asm.FnSkbGetTunnelOpt:            false, // TODO
+		asm.FnSkbSetTunnelOpt:            false, // TODO
+		asm.FnSkbChangeProto:             false,
+		asm.FnSkbChangeType:              false,
+		asm.FnSkbUnderCgroup:             true,
+		asm.FnGetHashRecalc:              true,
+		asm.FnGetCurrentTask:             false, // TODO
+		asm.FnProbeWriteUser:             false, // TODO
+		asm.FnCurrentTaskUnderCgroup:     true,
+		asm.FnSkbChangeTail:              false,
+		asm.FnSkbPullData:                false,
+		asm.FnCsumUpdate:                 false,
+		asm.FnSetHashInvalid:             false,
+		asm.FnGetNumaNodeId:              true,
+		asm.FnSkbChangeHead:              false,
+		asm.FnXdpAdjustHead:              false,
+		asm.FnProbeReadStr:               false, // TODO
+		asm.FnGetSocketCookie:            true,
+		asm.FnGetSocketUid:               true,
+		asm.FnSetHash:                    false,
+		asm.FnSetsockopt:                 false,
+		asm.FnSkbAdjustRoom:              false,
+		asm.FnRedirectMap:                true, // TODO shouldn't we store the redirect info using an emulated func?
+		asm.FnSkRedirectMap:              true, // TODO shouldn't we store the redirect info using an emulated func?
+		asm.FnSockMapUpdate:              false,
+		asm.FnXdpAdjustMeta:              false,
+		asm.FnPerfEventReadValue:         false, // TODO
+		asm.FnPerfProgReadValue:          false, // TODO
+		asm.FnGetsockopt:                 false,
+		asm.FnOverrideReturn:             false, // TODO
+		asm.FnSockOpsCbFlagsSet:          false,
+		asm.FnMsgRedirectMap:             true,  // TODO shouldn't we store the redirect info using an emulated func?
+		asm.FnMsgApplyBytes:              false, // TODO
+		asm.FnMsgCorkBytes:               false,
+		asm.FnMsgPullData:                false,
+		asm.FnBind:                       false, // TODO
+		asm.FnXdpAdjustTail:              false,
+		asm.FnSkbGetXfrmState:            false,
+		asm.FnGetStack:                   false, // TODO
+		asm.FnSkbLoadBytesRelative:       true,
+		asm.FnFibLookup:                  false, // TODO
+		asm.FnSockHashUpdate:             false,
+		asm.FnMsgRedirectHash:            true, // TODO shouldn't we store the redirect info using an emulated func?
+		asm.FnSkRedirectHash:             true, // TODO shouldn't we store the redirect info using an emulated func?
+		asm.FnLwtPushEncap:               false,
+		asm.FnLwtSeg6StoreBytes:          false,
+		asm.FnLwtSeg6AdjustSrh:           false,
+		asm.FnLwtSeg6Action:              false,
+		asm.FnRcRepeat:                   true,
+		asm.FnRcKeydown:                  true,
+		asm.FnSkbCgroupId:                true,
+		asm.FnGetCurrentCgroupId:         true,
+		asm.FnGetLocalStorage:            false,
+		asm.FnSkSelectReuseport:          false,
+		asm.FnSkbAncestorCgroupId:        true,
+		asm.FnSkLookupTcp:                false, // TODO
+		asm.FnSkLookupUdp:                false, // TODO
+		asm.FnSkRelease:                  false, // TODO
+		asm.FnMapPushElem:                false,
+		asm.FnMapPopElem:                 false,
+		asm.FnMapPeekElem:                false,
+		asm.FnMsgPushData:                false,
+		asm.FnMsgPopData:                 false,
+		asm.FnRcPointerRel:               true,
+		asm.FnSpinLock:                   false,
+		asm.FnSpinUnlock:                 false,
+		asm.FnSkFullsock:                 false, // TODO
+		asm.FnTcpSock:                    false, // TODO
+		asm.FnSkbEcnSetCe:                false, // TODO
+		asm.FnGetListenerSock:            false, // TODO
+		asm.FnSkcLookupTcp:               false, // TODO
+		asm.FnTcpCheckSyncookie:          true,
+		asm.FnSysctlGetName:              false, // TODO
+		asm.FnSysctlGetCurrentValue:      false, // TODO
+		asm.FnSysctlGetNewValue:          false, // TODO
+		asm.FnSysctlSetNewValue:          true,
+		asm.FnStrtol:                     true,
+		asm.FnStrtoul:                    true,
+		asm.FnSkStorageGet:               false,
+		asm.FnSkStorageDelete:            false,
+		asm.FnSendSignal:                 true,
+		asm.FnTcpGenSyncookie:            false,
+		asm.FnSkbOutput:                  false,
+		asm.FnProbeReadUser:              false, // TODO
+		asm.FnProbeReadKernel:            false, // TODO
+		asm.FnProbeReadUserStr:           false, // TODO
+		asm.FnProbeReadKernelStr:         false, // TODO
+		asm.FnTcpSendAck:                 true,
+		asm.FnSendSignalThread:           true,
+		asm.FnJiffies64:                  true,
+		asm.FnReadBranchRecords:          false, // TODO
+		asm.FnGetNsCurrentPidTgid:        false, // TODO
+		asm.FnXdpOutput:                  false,
+		asm.FnGetNetnsCookie:             true,
+		asm.FnGetCurrentAncestorCgroupId: true,
+		asm.FnSkAssign:                   true,
+		asm.FnKtimeGetBootNs:             true,
+		asm.FnSeqPrintf:                  true,
+		asm.FnSeqWrite:                   true,
+		asm.FnSkCgroupId:                 true,
+		asm.FnSkAncestorCgroupId:         true,
+		asm.FnRingbufOutput:              false,
+		asm.FnRingbufReserve:             false,
+		asm.FnRingbufSubmit:              false,
+		asm.FnRingbufDiscard:             false,
+		asm.FnRingbufQuery:               false,
+		asm.FnCsumLevel:                  false, // TODO
+		asm.FnSkcToTcp6Sock:              false, // TODO
+		asm.FnSkcToTcpSock:               false, // TODO
+		asm.FnSkcToTcpTimewaitSock:       false, // TODO
+		asm.FnSkcToTcpRequestSock:        false, // TODO
+		asm.FnSkcToUdp6Sock:              false, // TODO
+		asm.FnGetTaskStack:               false, // TODO
+		asm.FnLoadHdrOpt:                 false, // TODO
+		asm.FnStoreHdrOpt:                true,
+		asm.FnReserveHdrOpt:              true,
+		asm.FnInodeStorageGet:            false,
+		asm.FnInodeStorageDelete:         false,
+		asm.FnDPath:                      false, // TODO
+		asm.FnCopyFromUser:               false, // TODO
+		asm.FnSnprintfBtf:                true,
+		asm.FnSeqPrintfBtf:               true,
+		asm.FnSkbCgroupClassid:           true,
+		asm.FnRedirectNeigh:              true,
+		asm.FnPerCpuPtr:                  false,
+		asm.FnThisCpuPtr:                 false,
+		asm.FnRedirectPeer:               true,
+		asm.FnTaskStorageGet:             false,
+		asm.FnTaskStorageDelete:          false,
+		asm.FnGetCurrentTaskBtf:          false, // TODO
+		asm.FnBprmOptsSet:                true,
+		asm.FnKtimeGetCoarseNs:           true,
+		asm.FnImaInodeHash:               false, // TODO
+		asm.FnSockFromFile:               false, // TODO
+		asm.FnCheckMtu:                   true,
+		asm.FnForEachMapElem:             false,
+		asm.FnSnprintf:                   false, // TODO
+		asm.FnSysBpf:                     true,
+		asm.FnBtfFindByNameKind:          true,
+		asm.FnSysClose:                   true,
+		asm.FnTimerInit:                  false,
+		asm.FnTimerSetCallback:           false,
+		asm.FnTimerStart:                 false,
+		asm.FnTimerCancel:                false,
+		asm.FnGetFuncIp:                  true,
+		asm.FnGetAttachCookie:            true,
+		asm.FnTaskPtRegs:                 false, // TODO
+		// bpf_get_branch_snapshot
+		asm.BuiltinFunc(176): false, // TODO
+		// bpf_trace_vprintk
+		asm.BuiltinFunc(177): false, // TODO
+		// bpf_skc_to_unix_sock
+		asm.BuiltinFunc(178): false, // TODO
+		// bpf_kallsyms_lookup_name
+		asm.BuiltinFunc(179): true,
+		// bpf_find_vma
+		asm.BuiltinFunc(180): false,
+		// bpf_loop
+		asm.BuiltinFunc(181): false,
+		// bpf_strncmp
+		asm.BuiltinFunc(182): true,
+		// bpf_get_func_arg
+		asm.BuiltinFunc(183): false, // TODO
+		// bpf_get_func_ret
+		asm.BuiltinFunc(184): false, // TODO
+		// bpf_get_func_arg_cnt
+		asm.BuiltinFunc(185): true,
+		// bpf_get_retval
+		asm.BuiltinFunc(186): true,
+		// bpf_set_retval
+		asm.BuiltinFunc(187): true,
+	}
+)
 
 func syscallErr(errNo syscall.Errno) uint64 {
 	return uint64(int64(0) - int64(errNo))
@@ -100,6 +468,10 @@ func derefMapKey(p *Process, register uint64, size uint32) ([]byte, error) {
 	}
 
 	return keyVal, nil
+}
+
+func linuxHelperCantEmulate(p *Process) error {
+	return errors.New("This helper isn't emulated, captured context required")
 }
 
 func linuxHelperMapLookupElem(p *Process) error {

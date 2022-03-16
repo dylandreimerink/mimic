@@ -179,6 +179,86 @@ The goal of the `generic` context type is to provide a context which should cove
 <!-- TODO add XDP_MD explication -->
 <!-- TODO add JSON example -->
 
+### sk_buff
+
+<!-- TODO add sk_buff explication -->
+<!-- TODO add JSON example -->
+
+### Captured context
+
+A captured context is a wrapper around another context type to add "captured" helper data to it. The idea being that it is impossible to emulate a number of helper calls. Take `bpf_get_current_comm` for example, which contains the name of the current executable which would have to be supplied by the user, it is not something we can emulate. The captured context allows users to supply the result of helper calls via the context. The primary use case for this is to reply captured helper call responses from actual transactions.
+
+This is an example of a captured context:
+```json
+{
+    "name": "0 (2022-03-15 21:08:31.25219138 +0100 CET m=+7.724144727)",
+    "type": "captured",
+    "ctx": {
+      "subContext": {
+        "name": "0 (2022-03-15 21:08:31.25219138 +0100 CET m=+7.724144727)",
+        "type": "generic",
+        "ctx": {
+          "registers": {},
+          "memory": null,
+          "emulator": {}
+        }
+      },
+      "helperCalls": {
+        "16": [
+          {
+            "helperFn": 16,
+            "params": [
+              {
+                "reg": 1,
+                "value": 18446656970732715112
+              },
+              {
+                "reg": 2,
+                "value": 16
+              }
+            ],
+            "results": [
+              {
+                "reg": 0,
+                "value": 0
+              },
+              {
+                "reg": 1,
+                "value": "cGhwLWZwbQAAAAAAAAAAAA=="
+              }
+            ]
+          }
+        ],
+        "6": [
+          {
+            "helperFn": 6,
+            "params": [
+              {
+                "reg": 1,
+                "value": 18446613223656132368
+              },
+              {
+                "reg": 2,
+                "value": 3
+              },
+              {
+                "reg": 3,
+                "value": 18446656970732715112
+              }
+            ],
+            "results": [
+              {
+                "reg": 0,
+                "value": 7
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+```
+
 ## Features / TODO
 
 eBPF is complex, the Linux kernel is complex, thus so is an emulator. This is a list of features which we might want to add but haven't yet. Contributions are welcome. 
@@ -219,191 +299,196 @@ Note: Marked list items were on the list, but have since been implemented.
 
 **Linux helper functions**
 
-- [X] bpf_lookup_element
-- [X] bpf_update_element
-- [X] bpf_delete_element
-- [ ] bpf_probe_read
-- [x] bpf_ktime_get_ns
-- [ ] bpf_trace_printk
-- [x] bpf_get_prandom_u32
-- [x] bpf_get_smp_processor_id
-- [x] bpf_skb_store_bytes (sk_buff)
-- [ ] bpf_l3_csum_replace (sk_buff)
-- [ ] bpf_l4_csum_replace (sk_buff)
-- [X] bpf_tail_call
-- [ ] bpf_clone_redirect (sk_buff)
-- [ ] bpf_get_current_pid_tgid
-- [ ] bpf_get_current_uid_gid
-- [ ] bpf_get_current_comm
-- [ ] bpf_get_cgroup_classid (sk_buff)
-- [ ] bpf_skb_vlan_push (sk_buff)
-- [ ] bpf_skb_vlan_pop (sk_buff)
-- [ ] bpf_skb_get_tunnel_key (sk_buff)
-- [ ] bpf_skb_set_tunnel_key (sk_buff)
-- [ ] bpf_perf_event_read
-- [ ] bpf_redirect
-- [ ] bpf_get_route_realm (sk_buff)
-- [x] bpf_perf_event_output
-- [ ] bpf_skb_load_bytes
-- [ ] bpf_get_stackid
-- [ ] bpf_csum_diff
-- [ ] bpf_skb_get_tunnel_opt (sk_buff)
-- [ ] bpf_skb_set_tunnel_opt (sk_buff)
-- [ ] bpf_skb_change_proto (sk_buff)
-- [ ] bpf_skb_change_type (sk_buff)
-- [ ] bpf_skb_under_cgroup (sk_buff)
-- [ ] bpf_get_hash_recalc (sk_buff)
-- [ ] bpf_get_current_task
-- [ ] bpf_probe_write_user
-- [ ] bpf_current_task_under_cgroup
-- [ ] bpf_skb_change_tail (sk_buff)
-- [ ] bpf_skb_pull_data (sk_buff)
-- [ ] bpf_csum_update (sk_buff)
-- [ ] bpf_set_hash_invalid (sk_buff)
-- [ ] bpf_get_numa_node_id
-- [ ] bpf_skb_change_head (sk_buff)
-- [ ] bpf_xdp_adjust_head
-- [ ] bpf_probe_read_str
-- [ ] bpf_get_socket_cookie (sk_buff)
-- [ ] bpf_get_socket_uid (sk_buff)
-- [ ] bpf_set_hash (sk_buff)
-- [ ] bpf_setsockopt (sk_buff)
-- [ ] bpf_skb_adjust_room (sk_buff)
-- [ ] bpf_redirect_map (sk_buff)
-- [ ] bpf_sk_redirect_map (sk_buff)
-- [ ] bpf_sock_map_update
-- [ ] bpf_xdp_adjust_meta
-- [ ] bpf_perf_event_read_value
-- [ ] bpf_perf_prog_read_value
-- [ ] bpf_getsockopt
-- [ ] bpf_override_return
-- [ ] bpf_sock_ops_cb_flags_set
-- [ ] bpf_msg_redirect_map
-- [ ] bpf_msg_apply_bytes
-- [ ] bpf_msg_cork_bytes
-- [ ] bpf_msg_pull_data
-- [ ] bpf_bind
-- [ ] bpf_xdp_adjust_tail
-- [ ] bpf_skb_get_xfrm_state (sk_buff)
-- [ ] bpf_get_stack
-- [ ] bpf_skb_load_bytes_relative
-- [ ] bpf_fib_lookup
-- [ ] bpf_sock_hash_update
-- [ ] bpf_msg_redirect_hash
-- [ ] bpf_sk_redirect_hash (sk_buff)
-- [ ] bpf_lwt_push_encap (sk_buff)
-- [ ] bpf_lwt_seg6_store_bytes (sk_buff)
-- [ ] bpf_lwt_seg6_adjust_srh (sk_buff)
-- [ ] bpf_lwt_seg6_action (sk_buff)
-- [ ] bpf_rc_repeat
-- [ ] bpf_rc_keydown
-- [ ] bpf_skb_cgroup_id (sk_buff)
-- [ ] bpf_get_current_cgroup_id
-- [ ] bpf_get_local_storage
-- [ ] bpf_sk_select_reuseport
-- [ ] bpf_skb_ancestor_cgroup_id (sk_buff)
-- [ ] bpf_sk_lookup_tcp
-- [ ] bpf_sk_lookup_udp
-- [ ] bpf_sk_release
-- [x] bpf_map_push_elem
-- [x] bpf_map_pop_elem
-- [x] bpf_map_peek_elem
-- [ ] bpf_msg_push_data
-- [ ] bpf_msg_pop_data
-- [ ] bpf_rc_pointer_rel
-- [ ] bpf_spin_lock
-- [ ] bpf_spin_unlock
-- [ ] bpf_sk_fullsock
-- [ ] bpf_tcp_sock
-- [ ] bpf_skb_ecn_set_ce (sk_buff)
-- [ ] bpf_get_listener_sock
-- [ ] bpf_skc_lookup_tcp
-- [ ] bpf_tcp_check_syncookie
-- [ ] bpf_sysctl_get_name
-- [ ] bpf_sysctl_get_current_value
-- [ ] bpf_sysctl_get_new_value
-- [ ] bpf_sysctl_set_new_value
-- [ ] bpf_strtol
-- [ ] bpf_strtoul
-- [ ] bpf_sk_storage_get
-- [ ] bpf_sk_storage_delete
-- [ ] bpf_send_signal
-- [ ] bpf_tcp_gen_syncookie
-- [ ] bpf_skb_output
-- [ ] bpf_probe_read_user
-- [ ] bpf_probe_read_kernel
-- [ ] bpf_probe_read_user_str
-- [ ] bpf_probe_read_kernel_str
-- [ ] bpf_tcp_send_ack
-- [ ] bpf_send_signal_thread
-- [ ] bpf_jiffies64
-- [ ] bpf_read_branch_records
-- [ ] bpf_get_ns_current_pid_tgid
-- [ ] bpf_xdp_output
-- [ ] bpf_get_netns_cookie
-- [ ] bpf_get_current_ancestor_cgroup_id
-- [ ] bpf_sk_assign
-- [x] bpf_ktime_get_boot_ns
-- [ ] bpf_seq_printf
-- [ ] bpf_seq_write
-- [ ] bpf_sk_cgroup_id
-- [ ] bpf_sk_ancestor_cgroup_id
-- [ ] bpf_ringbuf_output
-- [ ] bpf_ringbuf_reserve
-- [ ] bpf_ringbuf_submit
-- [ ] bpf_ringbuf_discard
-- [ ] bpf_ringbuf_query
-- [ ] bpf_csum_level (sk_buff)
-- [ ] bpf_skc_to_tcp6_sock
-- [ ] bpf_skc_to_tcp_sock
-- [ ] bpf_skc_to_tcp_timewait_sock
-- [ ] bpf_skc_to_tcp_request_sock
-- [ ] bpf_skc_to_udp6_sock
-- [ ] bpf_get_task_stack
-- [ ] bpf_load_hdr_opt
-- [ ] bpf_store_hdr_opt
-- [ ] bpf_reserve_hdr_opt
-- [ ] bpf_inode_storage_get
-- [ ] bpf_inode_storage_delete
-- [ ] bpf_d_path
-- [ ] bpf_copy_from_user
-- [ ] bpf_snprintf_btf
-- [ ] bpf_seq_printf_btf
-- [ ] bpf_skb_cgroup_classid (sk_buff)
-- [ ] bpf_redirect_neigh
-- [ ] bpf_per_cpu_ptr
-- [ ] bpf_this_cpu_ptr
-- [ ] bpf_redirect_peer
-- [ ] bpf_task_storage_get
-- [ ] bpf_task_storage_delete
-- [ ] bpf_get_current_task_btf
-- [ ] bpf_bprm_opts_set
-- [x] bpf_ktime_get_coarse_ns
-- [ ] bpf_ima_inode_hash
-- [ ] bpf_sock_from_file
-- [ ] bpf_check_mtu
-- [ ] bpf_for_each_map_elem
-- [ ] bpf_snprintf
-- [ ] bpf_sys_bpf
-- [ ] bpf_btf_find_by_name_kind
-- [ ] bpf_sys_close
-- [ ] bpf_timer_init
-- [ ] bpf_timer_set_callback
-- [ ] bpf_timer_start
-- [ ] bpf_timer_cancel
-- [ ] bpf_get_func_ip
-- [ ] bpf_get_attach_cookie
-- [ ] bpf_task_pt_regs
-- [ ] bpf_get_branch_snapshot
-- [ ] bpf_trace_vprintk
-- [ ] bpf_skc_to_unix_sock
-- [ ] bpf_kallsyms_lookup_name
-- [ ] bpf_find_vma
-- [ ] bpf_loop
-- [ ] bpf_strncmp
-- [ ] bpf_get_func_arg
-- [ ] bpf_get_func_ret
-- [ ] bpf_get_func_arg_cnt
+| helper                             | Emulated | Captured context replay | commend                                                     |
+| ---------------------------------- | -------- | ----------------------- | ----------------------------------------------------------- |
+| bpf_lookup_element                 | ✅        | ❌                       |
+| bpf_lookup_element                 | ✅        | ❌                       |
+| bpf_update_element                 | ✅        | ❌                       |
+| bpf_delete_element                 | ✅        | ❌                       |
+| bpf_probe_read                     | N/A      | ✅                       |
+| bpf_ktime_get_ns                   | ✅        | ✅                       |
+| bpf_trace_printk                   | ❌        | ✅                       | TODO add trace output                                       |
+| bpf_get_prandom_u32                | ✅        | ✅                       |
+| bpf_get_smp_processor_id           | ✅        | ✅                       |
+| bpf_skb_store_bytes                | ✅        | ✅                       |
+| bpf_l3_csum_replace                | ❌        | ✅                       | Replay returns status code, but doesn't modify sk_buff      |
+| bpf_l4_csum_replace                | ❌        | ✅                       | Replay returns status code, but doesn't modify sk_buff      |
+| bpf_tail_call                      | ✅        | N/A                     |
+| bpf_clone_redirect                 | ❌        | ✅                       | Replay returns status code, but doesn't store redirect info |
+| bpf_get_current_pid_tgid           | N/A      | ✅                       |
+| bpf_get_current_uid_gid            | N/A      | ✅                       |
+| bpf_get_current_comm               | N/A      | ✅                       |
+| bpf_get_cgroup_classid             | N/A      | ✅                       |
+| bpf_skb_vlan_push                  | ❌        | ❌                       |
+| bpf_skb_vlan_pop                   | ❌        | ❌                       |
+| bpf_skb_get_tunnel_key             | N/A      | ✅                       |
+| bpf_skb_set_tunnel_key             | N/A      | ✅                       |
+| bpf_perf_event_read                | N/A      | ✅                       |
+| bpf_redirect                       | ❌        | ✅                       | Replay returns status code, but doesn't store redirect info |
+| bpf_get_route_realm                | N/A      | ✅                       |
+| bpf_perf_event_output              | ✅        | N/A                     |
+| bpf_skb_load_bytes                 | ✅        | ❌                       |
+| bpf_get_stackid                    | ✅        | ❌                       |
+| bpf_csum_diff                      | ✅        | ❌                       |
+| bpf_skb_get_tunnel_opt             | ❌        | ✅                       |
+| bpf_skb_set_tunnel_opt             | ❌        | ✅                       | Replay returns status code, but doesn't modify sk_buff      |
+| bpf_skb_change_proto               | ❌        | N/A                     |
+| bpf_skb_change_type                | ❌        | N/A                     |
+| bpf_skb_under_cgroup               | N/A      | ✅                       |
+| bpf_get_hash_recalc                | ❌        | ✅                       |
+| bpf_get_current_task               | ❌        | ❌                       |
+| bpf_probe_write_user               | ❌        | ❌                       |
+| bpf_current_task_under_cgroup      | N/A      | ✅                       |
+| bpf_skb_change_tail                | ❌        | N/A                     |
+| bpf_skb_pull_data                  | ❌        | N/A                     |
+| bpf_csum_update                    | ❌        | N/A                     |
+| bpf_set_hash_invalid               | ❌        | N/A                     |
+| bpf_get_numa_node_id               | N/A      | ✅                       |
+| bpf_skb_change_head                | ❌        | N/A                     |
+| bpf_xdp_adjust_head                | ❌        | N/A                     |
+| bpf_probe_read_str                 | N/A      | ✅                       |
+| bpf_get_socket_cookie              | N/A      | ✅                       |
+| bpf_get_socket_uid                 | N/A      | ✅                       |
+| bpf_set_hash                       | ❌        | N/A                     |
+| bpf_setsockopt                     | ❌        | N/A                     |
+| bpf_skb_adjust_room                | ❌        | N/A                     |
+| bpf_redirect_map                   | ❌        | ✅                       | Replay returns status code, but doesn't store redirect info |
+| bpf_sk_redirect_map                | ❌        | ✅                       | Replay returns status code, but doesn't store redirect info |
+| bpf_sock_map_update                | ❌        | N/A                     |
+| bpf_xdp_adjust_meta                | ❌        | N/A                     |
+| bpf_perf_event_read_value          | N/A      | ✅                       |
+| bpf_perf_prog_read_value           | N/A      | ✅                       |
+| bpf_getsockopt                     | ❌        | ❌                       |
+| bpf_override_return                | ❌        | ❌                       |
+| bpf_sock_ops_cb_flags_set          | ❌        | N/A                     |
+| bpf_msg_redirect_map               | ❌        | ✅                       | Replay returns status code, but doesn't store redirect info |
+| bpf_msg_apply_bytes                | ❌        | N/A                     |
+| bpf_msg_cork_bytes                 | ❌        | N/A                     |
+| bpf_msg_pull_data                  | ❌        | N/A                     |
+| bpf_bind                           | ❌        | N/A                     |
+| bpf_xdp_adjust_tail                | ❌        | N/A                     |
+| bpf_skb_get_xfrm_state             | ❌        | N/A                     |
+| bpf_get_stack                      | N/A      | ✅                       |
+| bpf_skb_load_bytes_relative        | ❌        | ✅                       |
+| bpf_fib_lookup                     | ❌        | ✅                       |
+| bpf_sock_hash_update               | ❌        | N/A                     |
+| bpf_msg_redirect_hash              | ❌        | ✅                       | Replay returns status code, but doesn't store redirect info |
+| bpf_sk_redirect_hash               | ❌        | ✅                       | Replay returns status code, but doesn't store redirect info |
+| bpf_lwt_push_encap                 | ❌        | N/A                     |
+| bpf_lwt_seg6_store_bytes           | ❌        | N/A                     |
+| bpf_lwt_seg6_adjust_srh            | ❌        | N/A                     |
+| bpf_lwt_seg6_action                | ❌        | N/A                     |
+| bpf_rc_repeat                      | ❌        | ✅                       |
+| bpf_rc_keydown                     | ❌        | ✅                       |
+| bpf_skb_cgroup_id                  | N/A      | ✅                       |
+| bpf_get_current_cgroup_id          | N/A      | ✅                       |
+| bpf_get_local_storage              | ❌        | N/A                     |
+| bpf_sk_select_reuseport            | ❌        | N/A                     |
+| bpf_skb_ancestor_cgroup_id         | ❌        | ✅                       |
+| bpf_sk_lookup_tcp                  | ❌        | ✅                       |
+| bpf_sk_lookup_udp                  | ❌        | ✅                       |
+| bpf_sk_release                     | ❌        | ❌                       |
+| bpf_map_push_elem                  | ✅        | ❌                       |
+| bpf_map_pop_elem                   | ✅        | ❌                       |
+| bpf_map_peek_elem                  | ✅        | ❌                       |
+| bpf_msg_push_data                  | ❌        | ❌                       |
+| bpf_msg_pop_data                   | ❌        | ❌                       |
+| bpf_rc_pointer_rel                 | ❌        | ✅                       |
+| bpf_spin_lock                      | ❌        | N/A                     |
+| bpf_spin_unlock                    | ❌        | N/A                     |
+| bpf_sk_fullsock                    | ❌        | ❌                       |
+| bpf_tcp_sock                       | ❌        | ❌                       |
+| bpf_skb_ecn_set_ce                 | ❌        | ❌                       |
+| bpf_get_listener_sock              | ❌        | ❌                       |
+| bpf_skc_lookup_tcp                 | ❌        | ❌                       |
+| bpf_tcp_check_syncookie            | ❌        | ✅                       |
+| bpf_sysctl_get_name                | ❌        | ✅                       |
+| bpf_sysctl_get_current_value       | ❌        | ✅                       |
+| bpf_sysctl_get_new_value           | ❌        | ✅                       |
+| bpf_sysctl_set_new_value           | ❌        | ✅                       | Replay returns status code, but doesn't update sysctl       |
+| bpf_strtol                         | ❌        | ✅                       |
+| bpf_strtoul                        | ❌        | ✅                       |
+| bpf_sk_storage_get                 | ❌        | N/A                     |
+| bpf_sk_storage_delete              | ❌        | N/A                     |
+| bpf_send_signal                    | ❌        | ✅                       |
+| bpf_tcp_gen_syncookie              | ❌        | N/A                     |
+| bpf_skb_output                     | ❌        | N/A                     |
+| bpf_probe_read_user                | N/A      | ✅                       |
+| bpf_probe_read_kernel              | N/A      | ✅                       |
+| bpf_probe_read_user_str            | N/A      | ✅                       |
+| bpf_probe_read_kernel_str          | N/A      | ✅                       |
+| bpf_tcp_send_ack                   | ❌        | ✅                       |
+| bpf_send_signal_thread             | ❌        | ✅                       |
+| bpf_jiffies64                      | ❌        | ✅                       |
+| bpf_read_branch_records            | N/A      | ✅                       |
+| bpf_get_ns_current_pid_tgid        | N/A      | ✅                       |
+| bpf_xdp_output                     | ❌        | ❌                       |
+| bpf_get_netns_cookie               | N/A      | ✅                       |
+| bpf_get_current_ancestor_cgroup_id | N/A      | ✅                       |
+| bpf_sk_assign                      | N/A      | ✅                       |
+| bpf_ktime_get_boot_ns              | ✅        | ✅                       |
+| bpf_seq_printf                     | ❌        | ✅                       |
+| bpf_seq_write                      | ❌        | ✅                       |
+| bpf_sk_cgroup_id                   | N/A      | ✅                       |
+| bpf_sk_ancestor_cgroup_id          | N/A      | ✅                       |
+| bpf_ringbuf_output                 | ❌        | N/A                     |
+| bpf_ringbuf_reserve                | ❌        | N/A                     |
+| bpf_ringbuf_submit                 | ❌        | N/A                     |
+| bpf_ringbuf_discard                | ❌        | N/A                     |
+| bpf_ringbuf_query                  | ❌        | N/A                     |
+| bpf_csum_level                     | ❌        | N/A                     |
+| bpf_skc_to_tcp6_sock               | ❌        | ❌                       |
+| bpf_skc_to_tcp_sock                | ❌        | ❌                       |
+| bpf_skc_to_tcp_timewait_sock       | ❌        | ❌                       |
+| bpf_skc_to_tcp_request_sock        | ❌        | ❌                       |
+| bpf_skc_to_udp6_sock               | ❌        | ❌                       |
+| bpf_get_task_stack                 | ❌        | ❌                       |
+| bpf_load_hdr_opt                   | ❌        | ✅                       |
+| bpf_store_hdr_opt                  | ❌        | ✅                       | Replay returns status code, but doesn't sk_buff             |
+| bpf_reserve_hdr_opt                | ❌        | ✅                       |
+| bpf_inode_storage_get              | ❌        | N/A                     |
+| bpf_inode_storage_delete           | ❌        | N/A                     |
+| bpf_d_path                         | ❌        | ✅                       |
+| bpf_copy_from_user                 | ❌        | ✅                       |
+| bpf_snprintf_btf                   | ❌        | ✅                       |
+| bpf_seq_printf_btf                 | ❌        | ✅                       |
+| bpf_skb_cgroup_classid             | N/A      | ✅                       |
+| bpf_redirect_neigh                 | N/A      | ✅                       | Replay returns status code, but doesn't store redirect info |
+| bpf_per_cpu_ptr                    | ❌        | ❌                       |
+| bpf_this_cpu_ptr                   | ❌        | ❌                       |
+| bpf_redirect_peer                  | ❌        | ✅                       | eplay returns status code, but doesn't store redirect info  |
+| bpf_task_storage_get               | ❌        | N/A                     |
+| bpf_task_storage_delete            | ❌        | N/A                     |
+| bpf_get_current_task_btf           | ❌        | ❌                       |
+| bpf_bprm_opts_set                  | ❌        | ✅                       |
+| bpf_ktime_get_coarse_ns            | ✅        | ✅                       |
+| bpf_ima_inode_hash                 | ❌        | ✅                       |
+| bpf_sock_from_file                 | ❌        | ❌                       |
+| bpf_check_mtu                      | ❌        | ✅                       |
+| bpf_for_each_map_elem              | ❌        | N/A                     |
+| bpf_snprintf                       | ❌        | ✅                       |
+| bpf_sys_bpf                        | ❌        | ✅                       |
+| bpf_btf_find_by_name_kind          | ❌        | ✅                       |
+| bpf_sys_close                      | ❌        | ✅                       |
+| bpf_timer_init                     | ❌        | N/A                     |
+| bpf_timer_set_callback             | ❌        | N/A                     |
+| bpf_timer_start                    | ❌        | N/A                     |
+| bpf_timer_cancel                   | ❌        | N/A                     |
+| bpf_get_func_ip                    | ❌        | ✅                       |
+| bpf_get_attach_cookie              | ❌        | ✅                       |
+| bpf_task_pt_regs                   | ❌        | ❌                       |
+| bpf_get_branch_snapshot            | ❌        | ✅                       |
+| bpf_trace_vprintk                  | ❌        | ❌                       |
+| bpf_skc_to_unix_sock               | ❌        | ❌                       |
+| bpf_kallsyms_lookup_name           | ❌        | ✅                       |
+| bpf_find_vma                       | ❌        | ❌                       |
+| bpf_loop                           | ❌        | ❌                       |
+| bpf_strncmp                        | ❌        | ✅                       |
+| bpf_get_func_arg                   | ❌        | ❌                       |
+| bpf_get_func_ret                   | ❌        | ✅                       |
+| bpf_get_func_arg_cnt               | ❌        | ✅                       |
+| bpf_get_retval                     | ❌        | ✅                       |
+| bpf_set_retval                     | ❌        | ✅                       |
 
 **Linux maps**
 

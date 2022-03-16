@@ -33,16 +33,27 @@ type GenericContextRegisters struct {
 // is not always desirable, it is recommended to use specific contexts whenever possible, but this type can always be
 // used as a fallback in situations where no specific context type exists.
 type GenericContext struct {
-	Name      string                  `json:"-"`
-	Registers GenericContextRegisters `json:"registers"`
-	Memory    []GenericContextMemory  `json:"memory"`
-	Emulator  map[string]interface{}  `json:"emulator"`
+	Name        string                     `json:"-"`
+	Registers   GenericContextRegisters    `json:"registers"`
+	Memory      []GenericContextMemory     `json:"memory"`
+	EmulatorRaw map[string]json.RawMessage `json:"emulator"`
+	Emulator    map[string]interface{}     `json:"-"`
 
 	loaded bool
 }
 
 // MarshalJSON implements json.Marshaler
 func (c *GenericContext) MarshalJSON() ([]byte, error) {
+	c.EmulatorRaw = make(map[string]json.RawMessage)
+	for k, v := range c.Emulator {
+		jsonV, err := json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("marshal '%s': %w", k, err)
+		}
+
+		c.EmulatorRaw[k] = json.RawMessage(jsonV)
+	}
+
 	type Alias GenericContext
 	a := Alias(*c)
 	b, err := json.Marshal(a)
@@ -62,6 +73,11 @@ func (c *GenericContext) MarshalJSON() ([]byte, error) {
 // GetName returns the name of the context
 func (c *GenericContext) GetName() string {
 	return c.Name
+}
+
+// SetName sets the name of the context
+func (c *GenericContext) SetName(name string) {
+	c.Name = name
 }
 
 // Load loads the context into a process. Load is called by the VM when creating a new process, users don't have to

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -122,11 +123,69 @@ func (le *LinuxEmulator) SetVM(vm *VM) {
 
 // CallHelperFunction is called by the VM when it wants to execute a helper function.
 func (le *LinuxEmulator) CallHelperFunction(helperNr int32, p *Process) error {
-	if len(linuxHelpers) <= int(helperNr) {
+	attemptReplay := len(replayableHelpers) > int(helperNr) && replayableHelpers[helperNr]
+	if attemptReplay {
+		var helperCalls map[string][]CapturedContextHelperCall
+		cc, ok := p.Context.(*CapturedContext)
+		if ok {
+			helperCalls = cc.HelperCalls
+		}
+
+		var counts map[int32]int
+		if callCountsInt := p.EmulatorValues["callCount"]; callCountsInt != nil {
+			var ok bool
+			counts, ok = callCountsInt.(map[int32]int)
+			if !ok {
+				return fmt.Errorf("'callCount' emulator value contains a non-map[int32]int value")
+			}
+		}
+		if counts == nil {
+			counts = make(map[int32]int)
+		}
+
+		count := counts[helperNr]
+
+		calls := helperCalls[strconv.Itoa(int(helperNr))]
+		if len(calls) > count {
+			counts[helperNr] = count + 1
+			p.EmulatorValues["callCount"] = counts
+
+			call := calls[count]
+
+			for _, result := range call.Result {
+				if len(result.Data) > 0 {
+					entry, off, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.Get(result.Reg)))
+					if !found {
+						return fmt.Errorf("register r%d isn't a pointer", result.Reg)
+					}
+
+					vmmem, ok := entry.Object.(VMMem)
+					if !ok {
+						return fmt.Errorf("register r%d doesn't point to vm-mem", result.Reg)
+					}
+
+					err := vmmem.Write(off, result.Data)
+					if err != nil {
+						// TODO set R0 to a negative number instread of erroring outright?
+						return fmt.Errorf("error while writing to r%d: %w", result.Reg, err)
+					}
+				} else {
+					err := p.Registers.Set(result.Reg, result.Scalar)
+					if err != nil {
+						return fmt.Errorf("set result: %w", err)
+					}
+				}
+			}
+
+			return nil
+		}
+	}
+
+	if len(emulatedLinuxHelpers) <= int(helperNr) {
 		return fmt.Errorf("unimplemented helper function %d", helperNr)
 	}
 
-	helper := linuxHelpers[helperNr]
+	helper := emulatedLinuxHelpers[helperNr]
 	if helper == nil {
 		return fmt.Errorf("unimplemented helper function %d", helperNr)
 	}

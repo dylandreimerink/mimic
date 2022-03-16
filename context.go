@@ -10,6 +10,7 @@ import (
 // context contains both the initial arguments(R1-R5) of a eBPF program as well as data which can be used by the
 // emulator in helper functions.
 type Context interface {
+	SetName(string)
 	GetName() string
 	// Load is called when a new process is started, the context is expected to construct a memory object to be passed
 	// to the program, register it in the memory controller and set initial argument registers(R1-R5)
@@ -38,6 +39,7 @@ func init() {
 	RegisterContextUnmarshaller("generic", unmarshalGeneric)
 	RegisterContextUnmarshaller("xdp_md", unmarshalXDPmd)
 	RegisterContextUnmarshaller("sk_buff", unmarshalSKBuff)
+	RegisterContextUnmarshaller("captured", unmarshalCaptured)
 }
 
 type protoCtx struct {
