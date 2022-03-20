@@ -11,7 +11,6 @@ import (
 	"github.com/cilium/ebpf/asm"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"golang.org/x/sys/unix"
 )
 
 var _ VMMem = (*SKBuff)(nil)
@@ -127,7 +126,7 @@ func SKBuffFromBytes(pktData []byte) (*SKBuff, error) {
 
 	// 2. sk = sk_alloc(net, AF_UNSPEC, GFP_USER, &bpf_dummy_proto, 1);
 	skBuf.sk = &SK{
-		Family: unix.AF_UNSPEC,
+		Family: AF_UNSPEC,
 		srcIP4: make(net.IP, 4),
 		dstIP4: make(net.IP, 4),
 		srcIP6: make(net.IP, 16),
@@ -136,7 +135,7 @@ func SKBuffFromBytes(pktData []byte) (*SKBuff, error) {
 
 	// 3. sock_init_data(NULL, sk);
 	// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/sock.c#L3201
-	skBuf.sk.State = unix.BPF_TCP_CLOSE
+	skBuf.sk.State = BPF_TCP_CLOSE
 
 	// 4. skb = build_skb(data, 0);
 	// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/skbuff.c#L190
@@ -223,12 +222,12 @@ func SKBuffFromBytes(pktData []byte) (*SKBuff, error) {
 			switch l := l.(type) {
 			case *layers.IPv4:
 				// https://elixir.bootlin.com/linux/v5.16.10/source/net/bpf/test_run.c#L640
-				skBuf.sk.Family = unix.AF_INET
+				skBuf.sk.Family = AF_INET
 				skBuf.sk.srcIP4 = l.SrcIP
 				skBuf.sk.dstIP4 = l.DstIP
 			case *layers.IPv6:
 				// https://elixir.bootlin.com/linux/v5.16.10/source/net/bpf/test_run.c#L648
-				skBuf.sk.Family = unix.AF_INET6
+				skBuf.sk.Family = AF_INET6
 				skBuf.sk.srcIP6 = l.SrcIP
 				skBuf.sk.dstIP6 = l.DstIP
 			}
@@ -1173,3 +1172,14 @@ const skBuffPktTypeOtherhost = 3
 func (pt skBuffPktType) valid() bool {
 	return pt <= skBuffPktTypeOtherhost
 }
+
+// Define unix constants here, since we can't import sys/unix on windows
+//revive:disable
+const (
+	AF_UNSPEC     = 0x0
+	BPF_TCP_CLOSE = 0x7
+	AF_INET       = 0x2
+	AF_INET6      = 0xa
+)
+
+//revive:enable

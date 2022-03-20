@@ -10,5 +10,5 @@ import (
 )
 
 func timeOfBoot() time.Time {
-	return time.Time().Add(-1 * windows.DurationSinceBoot())
+	return time.Now().Add(time.Duration(-1) * windows.DurationSinceBoot())
 }
