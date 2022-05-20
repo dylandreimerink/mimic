@@ -90,7 +90,7 @@ var (
 		asm.FnMsgCorkBytes:               nil, // TODO
 		asm.FnMsgPullData:                nil, // TODO
 		asm.FnBind:                       nil, // TODO
-		asm.FnXdpAdjustTail:              nil, // TODO
+		asm.FnXdpAdjustTail:              linuxHelperXDPAdjustTail,
 		asm.FnSkbGetXfrmState:            nil, // TODO
 		asm.FnGetStack:                   linuxHelperCantEmulate,
 		asm.FnSkbLoadBytesRelative:       nil, // TODO
@@ -795,6 +795,80 @@ func linuxHelperEventOutput(p *Process) error {
 		}
 
 		return fmt.Errorf("push: %w", err)
+	}
+
+	return nil
+}
+
+func linuxHelperXDPAdjustTail(p *Process) error {
+	delta := p.Registers.R2
+
+	// R1 = ptr to ctx, R2 = delta
+	entry, _, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R1))
+	if !found {
+		// If the address is not valid, handle it gracefully
+		p.Registers.R0 = syscallErr(syscall.EINVAL)
+		return nil
+	}
+
+	xdpmd, ok := entry.Object.(*PlainMemory)
+	if !ok {
+		// If the address is not valid, handle it gracefully
+		p.Registers.R0 = syscallErr(syscall.EINVAL)
+		return nil
+	}
+
+	// The XDP_MD ctx is 20 bytes, this is a sanity check
+	if len(xdpmd.Backing) != 20 {
+		p.Registers.R0 = syscallErr(syscall.EINVAL)
+		return nil
+	}
+
+	dataAddr, err := xdpmd.Load(0, asm.Word)
+	if err != nil {
+		return err
+	}
+
+	dataEndAddr, err := xdpmd.Load(4, asm.Word)
+	if err != nil {
+		return err
+	}
+
+	entry, offset, found := p.VM.MemoryController.GetEntry(uint32(dataEndAddr))
+	if !found {
+		// If the address is not valid, handle it gracefully
+		p.Registers.R0 = syscallErr(syscall.EINVAL)
+		return nil
+	}
+
+	pkt, ok := entry.Object.(*PlainMemory)
+	if !ok {
+		// If the address is not valid, handle it gracefully
+		p.Registers.R0 = syscallErr(syscall.EINVAL)
+		return nil
+	}
+
+	curSize := dataEndAddr - dataAddr
+	availableTailroom := len(pkt.Backing) - int(offset)
+	if delta >= 0 {
+		// If the users wants to grow beyond the available tailroom
+		if delta > uint64(availableTailroom) {
+			p.Registers.R0 = syscallErr(syscall.E2BIG)
+			return nil
+		}
+	} else {
+		// If the user wants to shrink beyond start of packet
+		if -delta >= curSize {
+			p.Registers.R0 = syscallErr(syscall.E2BIG)
+			return nil
+		}
+	}
+
+	dataEndAddr += delta
+
+	err = xdpmd.Store(4, dataEndAddr, asm.Word)
+	if err != nil {
+		return fmt.Errorf("update data end: %w", err)
 	}
 
 	return nil
