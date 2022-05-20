@@ -441,6 +441,8 @@ func (m *LinuxPerCPUHashMap) Init(emulator *LinuxEmulator) error {
 		return fmt.Errorf("map is still loaded, please cleanup before re-loading")
 	}
 
+	m.emulator = emulator
+
 	// TODO handle no-pre-allocate flag
 
 	m.keys = &PlainMemory{
@@ -458,7 +460,7 @@ func (m *LinuxPerCPUHashMap) Init(emulator *LinuxEmulator) error {
 
 		// The the values memory to the memory controller
 		valuesEntry, err := m.emulator.vm.MemoryController.AddEntry(
-			m.values,
+			m.values[i],
 			uint32(len(m.values[i].Backing)),
 			fmt.Sprintf("%s-values", m.Spec.Name),
 		)
