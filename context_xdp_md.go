@@ -75,7 +75,7 @@ func (c *LinuxContextXDP) Load(process *Process) error {
 	}
 
 	// xdp_md.data_end
-	err = c.xdpMD.Store(4, uint64(entry.Addr)+uint64(c.Headroom)+uint64(len(c.pkt.Backing)), asm.Word)
+	err = c.xdpMD.Store(4, uint64(entry.Addr)+uint64(c.Headroom)+uint64(len(c.Packet)), asm.Word)
 	if err != nil {
 		return fmt.Errorf("store xdp_md.data_end: %w", err)
 	}
