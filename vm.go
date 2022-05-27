@@ -343,10 +343,12 @@ func (p *Process) Step() (exited bool, err error) {
 
 // Run runs the program until it exits, encounters a fatal error or the context is canceled/deadline expires
 func (p *Process) Run(ctx context.Context) error {
+	done := ctx.Done()
 	for {
-		// Check the context very program instruction
-		if err := ctx.Err(); err != nil {
-			return err
+		select {
+		case <-done:
+			return ctx.Err()
+		default:
 		}
 
 		exited, err := p.Step()
