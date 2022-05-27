@@ -87,9 +87,7 @@ func (vm *VM) GetPrograms() []*ebpf.ProgramSpec {
 
 	// Make a new slice with the same pointers, so the slice content can't be changed but the programs can
 	ls := make([]*ebpf.ProgramSpec, len(vm.programs))
-	for i, prog := range vm.programs {
-		ls[i] = prog
-	}
+	copy(ls, vm.programs)
 
 	return ls
 }

@@ -801,7 +801,7 @@ func linuxHelperEventOutput(p *Process) error {
 }
 
 func linuxHelperXDPAdjustTail(p *Process) error {
-	delta := p.Registers.R2
+	delta := int64(p.Registers.R2)
 
 	// R1 = ptr to ctx, R2 = delta
 	entry, _, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R1))
@@ -852,21 +852,21 @@ func linuxHelperXDPAdjustTail(p *Process) error {
 	availableTailroom := len(pkt.Backing) - int(offset)
 	if delta >= 0 {
 		// If the users wants to grow beyond the available tailroom
-		if delta > uint64(availableTailroom) {
+		if delta > int64(availableTailroom) {
 			p.Registers.R0 = syscallErr(syscall.E2BIG)
 			return nil
 		}
 	} else {
 		// If the user wants to shrink beyond start of packet
-		if -delta >= curSize {
+		if -delta >= int64(curSize) {
 			p.Registers.R0 = syscallErr(syscall.E2BIG)
 			return nil
 		}
 	}
 
-	dataEndAddr += delta
+	newDataEndAddr := int64(dataEndAddr) + delta
 
-	err = xdpmd.Store(4, dataEndAddr, asm.Word)
+	err = xdpmd.Store(4, uint64(newDataEndAddr), asm.Word)
 	if err != nil {
 		return fmt.Errorf("update data end: %w", err)
 	}
