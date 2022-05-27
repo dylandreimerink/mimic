@@ -6,11 +6,14 @@ import (
 	"syscall"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 )
 
 var (
 	_ LinuxMap        = (*LinuxArrayMap)(nil)
 	_ LinuxMapUpdater = (*LinuxArrayMap)(nil)
+	_ VMMem           = (*LinuxArrayMap)(nil)
 )
 
 // LinuxArrayMap is the emulated version of ebpf.Array / BPF_MAP_TYPE_ARRAY.
@@ -31,6 +34,7 @@ func (m *LinuxArrayMap) Init(emulator *LinuxEmulator) error {
 	m.backing = &PlainMemory{
 		Backing: make([]byte, size),
 	}
+
 	// TODO set initial KV
 
 	// The the map itself to the memory controller
@@ -125,6 +129,42 @@ func (m *LinuxArrayMap) UpdateObject(key []byte, value LinuxMap, flags uint32) e
 	GetNativeEndianness().PutUint32(val, entry.Addr)
 
 	return m.Update(key, val, flags, 0)
+}
+
+// Load reads a single integer value of 1, 2, 4 or 8 bytes at a specific offset
+func (m *LinuxArrayMap) Load(offset uint32, size asm.Size) (uint64, error) {
+	if _, isDatasec := m.Spec.Value.(*btf.Datasec); !isDatasec {
+		return 0, fmt.Errorf("Can't access non-data-section array map directly")
+	}
+
+	return m.backing.Load(offset, size)
+}
+
+// Store write a single interger value of 1, 2, 4 or 8 bytes to a specific offset
+func (m *LinuxArrayMap) Store(offset uint32, value uint64, size asm.Size) error {
+	if _, isDatasec := m.Spec.Value.(*btf.Datasec); !isDatasec {
+		return fmt.Errorf("Can't access non-data-section array map directly")
+	}
+
+	return m.backing.Store(offset, value, size)
+}
+
+// Read reads a byte slice of arbitrary size, the length of 'b' is used to determine the requested size
+func (m *LinuxArrayMap) Read(offset uint32, b []byte) error {
+	if _, isDatasec := m.Spec.Value.(*btf.Datasec); !isDatasec {
+		return fmt.Errorf("Can't access non-data-section array map directly")
+	}
+
+	return m.backing.Read(offset, b)
+}
+
+// Write write a byte slice of arbitrary size to the memory
+func (m *LinuxArrayMap) Write(offset uint32, b []byte) error {
+	if _, isDatasec := m.Spec.Value.(*btf.Datasec); !isDatasec {
+		return fmt.Errorf("Can't access non-data-section array map directly")
+	}
+
+	return m.backing.Write(offset, b)
 }
 
 var (
