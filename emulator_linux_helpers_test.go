@@ -36,7 +36,7 @@ func TestLinuxHelperLookup(t *testing.T) {
 	}
 
 	// Add to VM, allocating it
-	err = emu.AddMap(m)
+	err = emu.AddMap("happy path", m)
 	if err != nil {
 		t.Fatal(err)
 	}

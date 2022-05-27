@@ -21,7 +21,7 @@ func TestLinuxPerCPUArray(t *testing.T) {
 	}
 
 	// Add to emulator, allocating it
-	err := emu.AddMap(m)
+	err := emu.AddMap("per-cpu-array", m)
 	if err != nil {
 		t.Fatal(err)
 	}

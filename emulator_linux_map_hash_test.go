@@ -21,7 +21,7 @@ func TestEmulatedHashMapLRU(t *testing.T) {
 		},
 	}
 
-	err := emu.AddMap(m)
+	err := emu.AddMap("LRU map", m)
 	if err != nil {
 		t.Fatal(err)
 	}

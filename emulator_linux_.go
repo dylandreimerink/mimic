@@ -94,7 +94,7 @@ func NewLinuxEmulator(opts ...LinuxEmulatorOpts) *LinuxEmulator {
 }
 
 // AddMap adds a map to the emulator.
-func (le *LinuxEmulator) AddMap(m LinuxMap) error {
+func (le *LinuxEmulator) AddMap(name string, m LinuxMap) error {
 	err := m.Init(le)
 	if err != nil {
 		return fmt.Errorf("map init: %w", err)
@@ -104,13 +104,13 @@ func (le *LinuxEmulator) AddMap(m LinuxMap) error {
 		le.Maps = make(map[string]LinuxMap)
 	}
 
-	if _, found := le.Maps[m.GetSpec().Name]; found {
+	if _, found := le.Maps[name]; found {
 		// TODO how should we resolve this when maps come from two different ELF files? Loaders normally only have to
 		// deal with unique names within a ELF file.
-		return fmt.Errorf("map with name '%d' already exists in emulator", le.Maps[m.GetSpec().Name])
+		return fmt.Errorf("map with name '%d' already exists in emulator", le.Maps[name])
 	}
 
-	le.Maps[m.GetSpec().Name] = m
+	le.Maps[name] = m
 
 	return nil
 }
