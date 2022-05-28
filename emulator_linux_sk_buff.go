@@ -275,7 +275,7 @@ func (sk *SKBuff) computeDataPointers() {
 
 	// skb_headlen(skb) is always zero
 	// cb->data_end  = skb->data + skb_headlen(skb);
-	GetNativeEndianness().PutUint32(sk.cb[qdiscSKBCBLen+4:], sk.data)
+	GetNativeEndianness().PutUint32(sk.cb[qdiscSKBCBLen+4:], sk.end)
 }
 
 // Load reads a single integer value of 1, 2, 4 or 8 bytes at a specific offset
@@ -499,12 +499,12 @@ func (sk *SKBuff) convertAccess(offset uint32, value uint64, size asm.Size, load
 
 		// https://elixir.bootlin.com/linux/v5.16.10/source/include/linux/filter.h#L657
 		// qdisc_skb_cb = 28 bytes
-		// void *data_meta = is 8 bytes (on 64 bit systems)
-		const dataEndOffset = 28 + 8
+		// void *data_meta = is 4 bytes (on 32 bit systems)
+		const dataEndOffset = 28 + 4
 
 		// https://elixir.bootlin.com/linux/v5.16.10/source/net/core/filter.c#L8602
 		if load {
-			return uint64(GetNativeEndianness().Uint16(sk.cb[dataEndOffset : dataEndOffset+2])), nil
+			return uint64(GetNativeEndianness().Uint32(sk.cb[dataEndOffset : dataEndOffset+4])), nil
 		}
 
 		// data_end is readonly
