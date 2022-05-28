@@ -62,11 +62,11 @@ var (
 		asm.FnGetHashRecalc:              nil, // TODO
 		asm.FnGetCurrentTask:             linuxHelperCantEmulate,
 		asm.FnProbeWriteUser:             linuxHelperCantEmulate,
-		asm.FnCurrentTaskUnderCgroup:     nil, // TODO
-		asm.FnSkbChangeTail:              nil, // TODO
-		asm.FnSkbPullData:                nil, // TODO
-		asm.FnCsumUpdate:                 nil, // TODO
-		asm.FnSetHashInvalid:             nil, // TODO
+		asm.FnCurrentTaskUnderCgroup:     nil,                      // TODO
+		asm.FnSkbChangeTail:              linuxHelperSkbChangeTail, // TODO
+		asm.FnSkbPullData:                nil,                      // TODO
+		asm.FnCsumUpdate:                 nil,                      // TODO
+		asm.FnSetHashInvalid:             nil,                      // TODO
 		asm.FnGetNumaNodeId:              linuxHelperCantEmulate,
 		asm.FnSkbChangeHead:              nil, // TODO
 		asm.FnXdpAdjustHead:              nil, // TODO
@@ -795,6 +795,45 @@ func linuxHelperEventOutput(p *Process) error {
 		}
 
 		return fmt.Errorf("push: %w", err)
+	}
+
+	return nil
+}
+
+// bpf_skb_change_tail
+func linuxHelperSkbChangeTail(p *Process) error {
+	// R1 = ctx (*sk_buff), R2 = delta
+	entry, _, found := p.VM.MemoryController.GetEntry(uint32(p.Registers.R1))
+	if !found {
+		return fmt.Errorf("mem ctl, didn't find sk_buff at 0x%08X", p.Registers.R1)
+	}
+
+	buf, ok := entry.Object.(*SKBuff)
+	if !ok {
+		return fmt.Errorf("R1 is not a valid sk_buff")
+	}
+
+	delta := int32(p.Registers.R2)
+	org := delta
+	if delta >= 0 {
+		avail := buf.tail - buf.end
+		if delta > int32(avail) {
+			delta = int32(avail)
+		}
+	} else {
+		avail := buf.end - buf.data
+		if delta < int32(avail) {
+			delta = int32(avail)
+		}
+	}
+
+	buf.end = uint32(int32(buf.tail) + delta)
+	buf.computeDataPointers()
+
+	if org == delta {
+		p.Registers.R0 = 0
+	} else {
+		p.Registers.R0 = syscallErr(1)
 	}
 
 	return nil
